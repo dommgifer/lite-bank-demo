@@ -1,0 +1,58 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: exchange-service
+
+# Service URLs
+services:
+  account-service:
+    url: ${ACCOUNT_SERVICE_URL:http://localhost:8081}
+  transaction-service:
+    url: ${TRANSACTION_SERVICE_URL:http://localhost:8082}
+  exchange-rate-service:
+    url: ${EXCHANGE_RATE_SERVICE_URL:http://localhost:8084}
+
+# OpenTelemetry Configuration
+otel:
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
+  service:
+    name: exchange-service
+
+# Actuator endpoints for health checks
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+# Logging configuration
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+  level:
+    root: INFO
+    com.litebank: DEBUG
+
+# SpringDoc OpenAPI / Swagger UI Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: alpha
+  info:
+    title: Exchange Service API
+    version: 1.0.0
+    description: Currency exchange service for cross-currency transfers

@@ -1,0 +1,51 @@
+server:
+  port: ${SERVER_PORT:8086}
+
+spring:
+  application:
+    name: deposit-withdrawal-service
+
+services:
+  account-service:
+    url: ${ACCOUNT_SERVICE_URL:http://localhost:8081}
+  transaction-service:
+    url: ${TRANSACTION_SERVICE_URL:http://localhost:8082}
+
+otel:
+  service:
+    name: ${OTEL_SERVICE_NAME:deposit-withdrawal-service}
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+logging:
+  level:
+    com.litebank: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - traceId=%X{trace_id} spanId=%X{span_id} - %msg%n"
+
+# SpringDoc OpenAPI / Swagger UI Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: alpha
+  info:
+    title: Deposit Withdrawal Service API
+    version: 1.0.0
+    description: Deposit and withdrawal operations service

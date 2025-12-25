@@ -1,0 +1,79 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+
+  # Filter out health check traces to reduce noise
+  filter/healthcheck:
+    error_mode: ignore
+    traces:
+      span:
+        - 'IsMatch(attributes["http.target"], ".*health.*")'
+        - 'IsMatch(attributes["url.path"], ".*health.*")'
+        - 'IsMatch(attributes["http.route"], ".*health.*")'
+        - 'IsMatch(name, ".*health.*")'
+
+  # 100% sampling for Phase 1 demo
+  probabilistic_sampler:
+    sampling_percentage: 100
+
+  # Add resource attributes
+  resource:
+    attributes:
+      - key: service.namespace
+        value: lite-bank-demo
+        action: upsert
+      - key: deployment.environment
+        value: local
+        action: upsert
+
+exporters:
+  # Export traces to Tempo
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  # Export logs to Loki
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+
+  # Export metrics to Prometheus
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: litebank
+
+  # Logging for debugging
+  logging:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [filter/healthcheck, probabilistic_sampler, batch, resource]
+      exporters: [otlp/tempo, logging]
+
+    logs:
+      receivers: [otlp]
+      processors: [batch, resource]
+      exporters: [loki, logging]
+
+    metrics:
+      receivers: [otlp]
+      processors: [batch, resource]
+      exporters: [prometheus]
+
+  telemetry:
+    metrics:
+      address: 0.0.0.0:8888

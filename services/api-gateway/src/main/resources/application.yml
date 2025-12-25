@@ -1,0 +1,138 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      # Global CORS Configuration
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:3000"
+              - "http://localhost:3001"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            exposedHeaders:
+              - "X-Trace-Id"
+              - "traceparent"
+            allowCredentials: true
+            maxAge: 3600
+
+      # Route Definitions
+      routes:
+        # User Service Routes (container internal port: 8080)
+        - id: user-service
+          uri: http://user-service:8080
+          predicates:
+            - Path=/api/v1/auth/**
+          filters:
+            - name: JwtAuthentication
+              args:
+                excludePaths: /api/v1/auth/login,/api/v1/auth/register
+
+        # Account Service Routes (container internal port: 8081)
+        - id: account-service
+          uri: http://account-service:8081
+          predicates:
+            - Path=/api/v1/accounts/**
+          filters:
+            - JwtAuthentication
+
+        # Transaction Service Routes (container internal port: 8080)
+        - id: transaction-service
+          uri: http://transaction-service:8080
+          predicates:
+            - Path=/api/v1/transactions/**
+          filters:
+            - JwtAuthentication
+
+        # Transfer Service Routes (container internal port: 8080)
+        - id: transfer-service
+          uri: http://transfer-service:8080
+          predicates:
+            - Path=/api/v1/transfers/**
+          filters:
+            - JwtAuthentication
+
+        # Deposit Service Routes (container internal port: 8080)
+        - id: deposit-service
+          uri: http://deposit-withdrawal-service:8080
+          predicates:
+            - Path=/api/v1/deposits/**
+          filters:
+            - JwtAuthentication
+
+        # Withdrawal Service Routes (container internal port: 8080)
+        - id: withdrawal-service
+          uri: http://deposit-withdrawal-service:8080
+          predicates:
+            - Path=/api/v1/withdrawals/**
+          filters:
+            - JwtAuthentication
+
+        # Exchange Service Routes (container internal port: 8080)
+        - id: exchange-service
+          uri: http://exchange-service:8080
+          predicates:
+            - Path=/api/v1/exchanges/**
+          filters:
+            - JwtAuthentication
+
+        # Exchange Rate Service Routes (container internal port: 8080)
+        - id: exchange-rate-service
+          uri: http://exchange-rate-service:8080
+          predicates:
+            - Path=/api/v1/rates/**
+          filters:
+            - JwtAuthentication
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:lite-bank-demo-secret-key-change-in-production-2024}
+  expiration: 86400000  # 24 hours in milliseconds
+
+# OpenTelemetry Configuration
+otel:
+  service:
+    name: api-gateway
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://otel-collector:4317}
+  traces:
+    sampler: always_on
+  metrics:
+    exporter: otlp
+
+# Management Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.litebank.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"

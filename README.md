@@ -1,36 +1,38 @@
 # Lite Bank Demo
 
-A microservices-based banking system demonstrating distributed transactions, event-driven architecture, and comprehensive observability with OpenTelemetry.
+A microservices-based banking system demonstrating coordination layer architecture, distributed transactions, and comprehensive observability with OpenTelemetry.
 
 ## 📋 Project Overview
 
 Lite Bank Demo is a learning-focused microservices project showcasing:
 
-- **Distributed Transactions**: SAGA pattern implementation for cross-service consistency
-- **Event-Driven Architecture**: Kafka-based asynchronous communication
-- **Full Observability**: Manual OpenTelemetry instrumentation with trace context propagation
-- **Polyglot Microservices**: Java (Spring Boot, Quarkus), Python (FastAPI), TypeScript (React)
+- **Coordination Layer Architecture**: Clear separation between business orchestration and data operations
+- **Distributed Transactions**: SAGA pattern with coordination services orchestrating data layer operations
+- **Full Observability**: Manual OpenTelemetry instrumentation with complete trace context propagation
+- **Unified Technology Stack**: Java 21 + Spring Boot 3.x for all microservices
 - **Modern DevOps**: Docker, Kubernetes, Flyway migrations
 
 ## 🏗️ Architecture
 
-### Microservices (10 Services)
+### Coordination Layer Pattern
 
-#### Java Services (Spring Boot 3.4.x)
-- **Account Service** - Account management and balance operations
+This project implements a **coordination layer architecture** where:
+- **Coordination Layer Services** (3): Handle business logic and orchestrate operations
+- **Data Layer Services** (4): Provide data access and core operations
+- **Transaction Service**: The ONLY service that can modify account balances
+
+### Microservices (7 Services)
+
+#### Data Layer Services (Java Spring Boot 3.4.x)
 - **User Service** - User authentication and profile management
-- **Audit Service** - Audit logging and compliance tracking
-- **Statement Service** - Account statement generation
+- **Account Service** - Account queries and validation (read-only)
+- **Transaction Service** - Core financial operations (ONLY service that modifies balances)
+- **Exchange Rate Service** - Currency conversion rates (mock)
 
-#### Java Services (Quarkus 3.15.x LTS)
-- **Notification Service** - Email/SMS notifications
-- **Report Service** - Reporting and analytics
-- **Compliance Service** - Regulatory compliance checks
-
-#### Python Services (FastAPI 0.115.0)
-- **Transfer Service** - Money transfer orchestration (SAGA coordinator)
-- **Exchange Rate Service** - Currency conversion and FX rates
-- **Analytics Service** - Real-time analytics and metrics
+#### Coordination Layer Services (Java Spring Boot 3.4.x)
+- **Deposit-Withdrawal Service** - Orchestrates deposit/withdrawal operations
+- **Transfer Service** - Orchestrates money transfers (SAGA coordinator)
+- **Exchange Service** - Orchestrates currency exchange operations
 
 #### Frontend
 - **React 18 + Vite 6** - Single-page application with Material-UI v5
@@ -39,13 +41,10 @@ Lite Bank Demo is a learning-focused microservices project showcasing:
 
 | Component | Technology | Version |
 |-----------|-----------|---------|
-| Backend (Java) | Spring Boot | 3.4.x |
-| Backend (Java) | Quarkus | 3.15.x LTS |
-| Backend (Python) | FastAPI | 0.115.0 |
+| Backend | Java + Spring Boot | 21 + 3.4.x |
 | Frontend | React + Vite | 18 + 6.x |
 | Database | PostgreSQL | 16.x |
-| Message Broker | Apache Kafka | 3.9.x |
-| Observability | OpenTelemetry | Java 1.57.0, Python 1.39.0, JS 2.x |
+| Observability | OpenTelemetry | Java SDK 1.57.0 |
 | Observability Stack | Grafana + Tempo + Loki | Latest |
 | Container Runtime | Docker | Latest |
 | Orchestration | Kubernetes | 1.28+ |
@@ -54,8 +53,7 @@ Lite Bank Demo is a learning-focused microservices project showcasing:
 
 ### Prerequisites
 
-- **Java 21** (for Spring Boot & Quarkus services)
-- **Python 3.11+** (for FastAPI services)
+- **Java 21** (for all Spring Boot services)
 - **Node.js 20.x LTS** (for React frontend)
 - **Docker & Docker Compose** (for local development)
 - **Maven 3.9+** (for Java builds)
@@ -68,7 +66,7 @@ Lite Bank Demo is a learning-focused microservices project showcasing:
    cd lite-bank-demo
    ```
 
-2. **Start infrastructure services** (PostgreSQL, Kafka, OpenTelemetry Collector)
+2. **Start infrastructure services** (PostgreSQL, Grafana Stack, OpenTelemetry Collector)
    ```bash
    docker-compose up -d
    ```
@@ -82,23 +80,18 @@ Lite Bank Demo is a learning-focused microservices project showcasing:
 
 4. **Start backend services**
 
-   **Java (Spring Boot) services:**
+   **All services use Spring Boot:**
    ```bash
-   cd services/account-service
-   mvn spring-boot:run
-   ```
+   # Data Layer Services
+   cd services/user-service && mvn spring-boot:run
+   cd services/account-service && mvn spring-boot:run
+   cd services/transaction-service && mvn spring-boot:run
+   cd services/exchange-rate-service && mvn spring-boot:run
 
-   **Java (Quarkus) services:**
-   ```bash
-   cd services/notification-service
-   mvn quarkus:dev
-   ```
-
-   **Python (FastAPI) services:**
-   ```bash
-   cd services/transfer-service
-   pip install -r requirements.txt
-   uvicorn app.main:app --reload
+   # Coordination Layer Services
+   cd services/deposit-withdrawal-service && mvn spring-boot:run
+   cd services/transfer-service && mvn spring-boot:run
+   cd services/exchange-service && mvn spring-boot:run
    ```
 
 5. **Start frontend**
@@ -116,41 +109,41 @@ Lite Bank Demo is a learning-focused microservices project showcasing:
 
 ```
 lite-bank-demo/
-├── services/                   # Microservices
-│   ├── account-service/        # Spring Boot - Account management
-│   ├── user-service/           # Spring Boot - User management
-│   ├── transfer-service/       # FastAPI - Transfer orchestration (SAGA)
-│   ├── notification-service/   # Quarkus - Notifications
-│   ├── exchange-rate-service/  # FastAPI - FX rates
-│   ├── audit-service/          # Spring Boot - Audit logging
-│   ├── statement-service/      # Spring Boot - Statement generation
-│   ├── report-service/         # Quarkus - Reporting
-│   ├── analytics-service/      # FastAPI - Analytics
-│   └── compliance-service/     # Quarkus - Compliance checks
-├── frontend/                   # React + Vite frontend
-├── infrastructure/             # Kubernetes manifests & Helm charts
-├── docs/                       # Documentation
-│   ├── architecture.md         # Architecture decisions (ADR)
-│   └── project_context.md      # AI agent implementation rules
-├── scripts/                    # Deployment & utility scripts
-├── docker-compose.yml          # Local development infrastructure
-└── README.md                   # This file
+├── services/                         # Microservices
+│   ├── user-service/                 # Data Layer - User management & auth
+│   ├── account-service/              # Data Layer - Account queries (read-only)
+│   ├── transaction-service/          # Data Layer - Financial operations (ONLY modifies balances)
+│   ├── exchange-rate-service/        # Data Layer - FX rates (mock)
+│   ├── deposit-withdrawal-service/   # Coordination Layer - Deposit/Withdrawal orchestration
+│   ├── transfer-service/             # Coordination Layer - Transfer orchestration (SAGA)
+│   └── exchange-service/             # Coordination Layer - Exchange orchestration
+├── frontend/                         # React + Vite frontend
+├── infrastructure/                   # Kubernetes manifests & Helm charts
+├── docs/                             # Documentation
+│   ├── architecture.md               # Architecture decisions (ADR)
+│   ├── prd.md                        # Product requirements document
+│   └── epics.md                      # Epic and story breakdown
+├── scripts/                          # Deployment & utility scripts
+├── docker-compose.yml                # Local development infrastructure
+└── README.md                         # This file
 ```
 
-## 🔄 SAGA Pattern Implementation
+## 🔄 Coordination Layer Architecture
 
-The **Transfer Service** (Python FastAPI) orchestrates distributed transactions using the SAGA pattern:
+### SAGA Pattern Implementation
 
-1. **Freeze Source Account** (Account Service)
-2. **Freeze Destination Account** (Account Service)
-3. **Check Compliance** (Compliance Service)
-4. **Execute FX Conversion** (Exchange Rate Service)
-5. **Debit Source Account** (Account Service)
-6. **Credit Destination Account** (Account Service)
-7. **Send Notification** (Notification Service)
-8. **Record Audit Log** (Audit Service)
+The **Transfer Service** (Coordination Layer) orchestrates distributed transactions:
 
-**Compensation logic** is triggered automatically if any step fails, ensuring data consistency across services.
+1. **Validate Source Account** → calls Account Service
+2. **Validate Destination Account** → calls Account Service
+3. **Debit from Source** → calls Transaction Service
+4. **Credit to Destination** → calls Transaction Service
+5. **Record Transfer Transactions** → calls Transaction Service
+
+**Key Principles:**
+- **Only Transaction Service modifies balances**: All coordination services must call Transaction Service for money operations
+- **Account Service is read-only**: Only provides queries and validation
+- **Compensation logic**: Handled by coordination layer, reverses operations via Transaction Service
 
 ## 📊 Observability
 
@@ -158,18 +151,25 @@ The **Transfer Service** (Python FastAPI) orchestrates distributed transactions 
 
 All services use **manual instrumentation** to capture:
 
-- **Distributed Traces**: Full request flow across all microservices
-- **Business Attributes**: Custom span attributes (account.id, transaction.amount, saga.step)
-- **Trace Context Propagation**: W3C TraceContext headers in HTTP & Kafka messages
+- **Distributed Traces**: Complete trace propagation from coordination layer → data layer
+- **Business Attributes**: Custom span attributes (account.id, transaction.amount, transfer.amount)
+- **Trace Context Propagation**: W3C TraceContext headers (`traceparent`) in all HTTP calls
 
 ### Observability Stack
 
 - **Grafana**: Dashboards and visualization
 - **Tempo**: Distributed tracing backend
-- **Loki**: Log aggregation
-- **Prometheus**: Metrics collection (future)
+- **Loki**: Log aggregation with structured JSON logs
+- **OpenTelemetry Collector**: Centralized data collection
 
 Access Grafana at http://localhost:3000 after starting `docker-compose`.
+
+### Trace Visualization
+
+View complete service interaction traces:
+- Coordination Layer → Account Service (validation)
+- Coordination Layer → Transaction Service (money operations)
+- All spans include business context for fast debugging
 
 ## 🧪 Testing
 
@@ -181,12 +181,6 @@ cd services/account-service
 mvn test
 ```
 
-**Python Services (pytest):**
-```bash
-cd services/transfer-service
-pytest --cov=app tests/
-```
-
 **Frontend (Vitest + React Testing Library):**
 ```bash
 cd frontend
@@ -196,20 +190,21 @@ npm run test
 ### Test Coverage
 
 - Target: **70%+ code coverage** for all services
-- Integration tests use **Testcontainers** for PostgreSQL and Kafka
+- Integration tests use **Testcontainers** for PostgreSQL
 
 ## 🔐 Security
 
 - **No hardcoded credentials**: All secrets in environment variables
 - **Business IDs**: No database auto-increment IDs exposed in APIs
-- **Input validation**: Pydantic models (Python), Bean Validation (Java)
+- **Input validation**: Bean Validation (Java)
 - **Error handling**: Centralized exception handlers prevent information leakage
 
 ## 📖 Documentation
 
-- **[Architecture Decisions](docs/architecture.md)** - Complete ADR with technology choices
-- **[Project Context](docs/project_context.md)** - AI agent implementation rules and coding standards
-- **API Documentation** - OpenAPI/Swagger available at `/api/docs` for each service
+- **[Architecture Decisions](docs/architecture.md)** - Complete ADR with coordination layer architecture
+- **[Product Requirements](docs/prd.md)** - Detailed PRD with user stories and requirements
+- **[Epic Breakdown](docs/epics.md)** - Epic and story breakdown for implementation
+- **API Documentation** - OpenAPI/Swagger available at `/actuator/swagger-ui` for each service
 
 ## 🛠️ Development Workflow
 
@@ -234,8 +229,8 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **Examples:**
-- `feat(account-service): add account creation endpoint`
-- `fix(kafka): propagate trace context in message headers`
+- `feat(account-service): add account validation endpoint`
+- `fix(transfer-service): fix compensation logic for failed transfers`
 - `refactor(otel): extract common OpenTelemetry config`
 
 ## 📝 License
@@ -251,7 +246,7 @@ This is a learning project. Contributions are welcome for:
 - Test coverage improvements
 - Performance optimizations
 
-Please follow the coding standards in [docs/project_context.md](docs/project_context.md).
+Please follow the architecture principles in [docs/architecture.md](docs/architecture.md).
 
 ## 📧 Contact
 
@@ -261,4 +256,4 @@ For questions or discussions, please open an issue on GitHub.
 
 **Built with ❤️ using Claude Code**
 
-_Last updated: 2025-12-11_
+_Last updated: 2025-12-19_
