@@ -1,7 +1,7 @@
 -- V3: Create transactions table (append-only)
 CREATE TABLE transactions (
     transaction_id BIGSERIAL PRIMARY KEY,
-    account_id INTEGER NOT NULL,
+    account_id BIGINT NOT NULL,
     transaction_type VARCHAR(20) NOT NULL,
     amount NUMERIC(15, 2) NOT NULL,
     currency VARCHAR(3) NOT NULL,

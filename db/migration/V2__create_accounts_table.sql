@@ -1,7 +1,7 @@
 -- V2: Create accounts table
 CREATE TABLE accounts (
-    account_id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
+    account_id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
     currency VARCHAR(3) NOT NULL,
     balance NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
