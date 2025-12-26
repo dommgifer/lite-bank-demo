@@ -48,49 +48,49 @@ spring:
           filters:
             - JwtAuthentication
 
-        # Transaction Service Routes (container internal port: 8080)
+        # Transaction Service Routes (container internal port: 8082)
         - id: transaction-service
-          uri: http://transaction-service:8080
+          uri: http://transaction-service:8082
           predicates:
             - Path=/api/v1/transactions/**
           filters:
             - JwtAuthentication
 
-        # Transfer Service Routes (container internal port: 8080)
+        # Transfer Service Routes (container internal port: 8083)
         - id: transfer-service
-          uri: http://transfer-service:8080
+          uri: http://transfer-service:8083
           predicates:
             - Path=/api/v1/transfers/**
           filters:
             - JwtAuthentication
 
-        # Deposit Service Routes (container internal port: 8080)
+        # Deposit Service Routes (container internal port: 8086)
         - id: deposit-service
-          uri: http://deposit-withdrawal-service:8080
+          uri: http://deposit-withdrawal-service:8086
           predicates:
             - Path=/api/v1/deposits/**
           filters:
             - JwtAuthentication
 
-        # Withdrawal Service Routes (container internal port: 8080)
+        # Withdrawal Service Routes (container internal port: 8086)
         - id: withdrawal-service
-          uri: http://deposit-withdrawal-service:8080
+          uri: http://deposit-withdrawal-service:8086
           predicates:
             - Path=/api/v1/withdrawals/**
           filters:
             - JwtAuthentication
 
-        # Exchange Service Routes (container internal port: 8080)
+        # Exchange Service Routes (container internal port: 8085)
         - id: exchange-service
-          uri: http://exchange-service:8080
+          uri: http://exchange-service:8085
           predicates:
             - Path=/api/v1/exchanges/**
           filters:
             - JwtAuthentication
 
-        # Exchange Rate Service Routes (container internal port: 8080)
+        # Exchange Rate Service Routes (container internal port: 8084)
         - id: exchange-rate-service
-          uri: http://exchange-rate-service:8080
+          uri: http://exchange-rate-service:8084
           predicates:
             - Path=/api/v1/rates/**
           filters:

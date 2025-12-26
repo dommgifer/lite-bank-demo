@@ -46,10 +46,7 @@ class JwtAuthenticationGatewayFilterFactoryTest {
 
     @BeforeEach
     void setUp() {
-        filterFactory = new JwtAuthenticationGatewayFilterFactory();
-        // Use reflection to set private fields for testing
-        org.springframework.test.util.ReflectionTestUtils.setField(filterFactory, "jwtUtil", jwtUtil);
-        org.springframework.test.util.ReflectionTestUtils.setField(filterFactory, "tracer", tracer);
+        filterFactory = new JwtAuthenticationGatewayFilterFactory(jwtUtil, tracer);
 
         // Mock tracer to return span
         when(tracer.spanBuilder(anyString())).thenReturn(mock(io.opentelemetry.api.trace.SpanBuilder.class));
