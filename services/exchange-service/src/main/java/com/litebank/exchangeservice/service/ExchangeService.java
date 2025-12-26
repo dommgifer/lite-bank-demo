@@ -74,8 +74,21 @@ public class ExchangeService {
                                 + ", Actual: " + destAccountCurrency);
             }
 
-            // Step 3: Execute atomic exchange operation via Transaction Service
-            // Note: Transaction Service will handle balance validation, exchange rate lookup, and atomic updates
+            // Step 3: Get exchange rate
+            log.info("Getting exchange rate from {} to {}", request.getSourceCurrency(), request.getDestinationCurrency());
+            BigDecimal exchangeRate = exchangeRateServiceClient.getExchangeRate(
+                    request.getSourceCurrency(),
+                    request.getDestinationCurrency()
+            );
+            log.info("Exchange rate: {}", exchangeRate);
+
+            // Step 4: Calculate destination amount
+            BigDecimal destinationAmount = request.getAmount()
+                    .multiply(exchangeRate)
+                    .setScale(2, RoundingMode.HALF_UP);
+            log.info("Destination amount: {}", destinationAmount);
+
+            // Step 5: Execute atomic exchange operation via Transaction Service
             log.info("Executing atomic exchange operation via Transaction Service");
 
             String description = request.getDescription() != null ? request.getDescription()
@@ -87,7 +100,9 @@ public class ExchangeService {
                     .destinationAccountId(request.getDestinationAccountId())
                     .sourceAmount(request.getAmount())
                     .sourceCurrency(request.getSourceCurrency())
+                    .destinationAmount(destinationAmount)
                     .destinationCurrency(request.getDestinationCurrency())
+                    .exchangeRate(exchangeRate)
                     .referenceId(exchangeId)
                     .description(description)
                     .build();

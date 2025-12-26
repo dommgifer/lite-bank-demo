@@ -68,6 +68,7 @@ public class WithdrawalService {
                     .accountId(request.getAccountId())
                     .amount(request.getAmount())
                     .currency(request.getCurrency())
+                    .transactionType("WITHDRAWAL")
                     .referenceId(referenceId)
                     .description(description)
                     .build();

@@ -15,6 +15,7 @@ public class DebitRequest {
     private Long accountId;
     private BigDecimal amount;
     private String currency;
+    private String transactionType;
     private String referenceId;
     private String description;
 }

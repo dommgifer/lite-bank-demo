@@ -67,6 +67,7 @@ public class DepositService {
                     .accountId(request.getAccountId())
                     .amount(request.getAmount())
                     .currency(request.getCurrency())
+                    .transactionType("DEPOSIT")
                     .referenceId(referenceId)
                     .description(description)
                     .build();

@@ -16,7 +16,9 @@ public class ExchangeTransactionRequest {
     private Long destinationAccountId;
     private BigDecimal sourceAmount;
     private String sourceCurrency;
+    private BigDecimal destinationAmount;
     private String destinationCurrency;
+    private BigDecimal exchangeRate;
     private String referenceId;
     private String description;
 }
