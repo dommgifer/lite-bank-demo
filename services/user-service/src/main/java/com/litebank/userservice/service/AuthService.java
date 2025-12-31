@@ -28,6 +28,7 @@ public class AuthService {
     public LoginResponse login(LoginRequest request) {
         // Start OpenTelemetry span
         Span span = tracer.spanBuilder("AuthService.login")
+                .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {

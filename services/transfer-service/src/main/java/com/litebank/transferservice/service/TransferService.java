@@ -24,7 +24,9 @@ public class TransferService {
     private final Tracer tracer;
 
     public TransferResponse transfer(TransferRequest request, String traceId) {
-        Span span = tracer.spanBuilder("TransferService.transfer").startSpan();
+        Span span = tracer.spanBuilder("TransferService.transfer")
+                .setParent(io.opentelemetry.context.Context.current())
+                .startSpan();
         try (Scope scope = span.makeCurrent()) {
             span.setAttribute("from.account.id", request.getFromAccountId());
             span.setAttribute("to.account.id", request.getToAccountId());

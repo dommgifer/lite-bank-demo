@@ -28,6 +28,7 @@ public class AccountService {
     @Transactional(readOnly = true)
     public Account getAccountById(Long accountId) {
         Span span = tracer.spanBuilder("AccountService.getAccountById")
+                .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {
@@ -54,6 +55,7 @@ public class AccountService {
     @Transactional(readOnly = true)
     public List<Account> getAccountsByUserId(Long userId) {
         Span span = tracer.spanBuilder("AccountService.getAccountsByUserId")
+                .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {
@@ -75,6 +77,7 @@ public class AccountService {
     @Transactional(readOnly = true)
     public BalanceResponse getAccountBalance(Long accountId) {
         Span span = tracer.spanBuilder("AccountService.getAccountBalance")
+                .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {
@@ -108,6 +111,7 @@ public class AccountService {
     @Transactional
     public Account createAccount(CreateAccountRequest request) {
         Span span = tracer.spanBuilder("AccountService.createAccount")
+                .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {

@@ -34,6 +34,7 @@ public class ExchangeService {
 
     public ExchangeResponse executeExchange(ExchangeRequest request) {
         Span span = tracer.spanBuilder("ExchangeService.executeExchange")
+                .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
 
         String exchangeId = UUID.randomUUID().toString();

@@ -6,9 +6,6 @@ import com.litebank.transferservice.dto.TransactionResponse;
 import com.litebank.transferservice.dto.TransferTransactionRequest;
 import com.litebank.transferservice.dto.TransferTransactionResponse;
 import com.litebank.transferservice.exception.ServiceCommunicationException;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Scope;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,26 +24,17 @@ import org.springframework.web.client.RestTemplate;
 public class TransactionServiceClient {
 
     private final RestTemplate restTemplate;
-    private final Tracer tracer;
 
     @Value("${transaction.service.url}")
     private String transactionServiceUrl;
 
     public TransactionResponse createTransaction(CreateTransactionRequest request) {
-        Span span = tracer.spanBuilder("TransactionServiceClient.createTransaction").startSpan();
-        try (Scope scope = span.makeCurrent()) {
-            span.setAttribute("account.id", request.getAccountId());
-            span.setAttribute("transaction.type", request.getTransactionType());
-            span.setAttribute("amount", request.getAmount().toString());
-
+        try {
             String url = transactionServiceUrl + "/api/v1/transactions";
             log.debug("Calling Transaction Service: POST {}", url);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("traceparent", String.format("00-%s-%s-01",
-                span.getSpanContext().getTraceId(),
-                span.getSpanContext().getSpanId()));
 
             HttpEntity<CreateTransactionRequest> entity = new HttpEntity<>(request, headers);
 
@@ -63,11 +51,8 @@ public class TransactionServiceClient {
 
             throw new ServiceCommunicationException("Failed to create transaction");
         } catch (Exception e) {
-            span.recordException(e);
             log.error("Error creating transaction: {}", e.getMessage());
             throw new ServiceCommunicationException("Failed to communicate with Transaction Service: " + e.getMessage());
-        } finally {
-            span.end();
         }
     }
 
@@ -75,20 +60,12 @@ public class TransactionServiceClient {
      * Call Transaction Service's transfer API - atomic operation for transferring funds
      */
     public TransferTransactionResponse transfer(TransferTransactionRequest request) {
-        Span span = tracer.spanBuilder("TransactionServiceClient.transfer").startSpan();
-        try (Scope scope = span.makeCurrent()) {
-            span.setAttribute("source.account.id", request.getSourceAccountId());
-            span.setAttribute("destination.account.id", request.getDestinationAccountId());
-            span.setAttribute("amount", request.getAmount().toString());
-
+        try {
             String url = transactionServiceUrl + "/api/v1/transactions/transfer";
             log.debug("Calling Transaction Service: POST {}", url);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("traceparent", String.format("00-%s-%s-01",
-                span.getSpanContext().getTraceId(),
-                span.getSpanContext().getSpanId()));
 
             HttpEntity<TransferTransactionRequest> entity = new HttpEntity<>(request, headers);
 
@@ -105,11 +82,8 @@ public class TransactionServiceClient {
 
             throw new ServiceCommunicationException("Failed to execute transfer");
         } catch (Exception e) {
-            span.recordException(e);
             log.error("Error executing transfer: {}", e.getMessage());
             throw new ServiceCommunicationException("Failed to communicate with Transaction Service: " + e.getMessage());
-        } finally {
-            span.end();
         }
     }
 }

@@ -31,6 +31,7 @@ public class WithdrawalService {
 
     public WithdrawalResponse executeWithdrawal(WithdrawalRequest request) {
         Span span = tracer.spanBuilder("WithdrawalService.executeWithdrawal")
+                .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
 
         String withdrawalId = UUID.randomUUID().toString();

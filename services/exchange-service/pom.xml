@@ -21,6 +21,7 @@
     <properties>
         <java.version>21</java.version>
         <opentelemetry.version>1.44.1</opentelemetry.version>
+        <opentelemetry-instrumentation.version>2.10.0</opentelemetry-instrumentation.version>
     </properties>
 
     <dependencies>
@@ -63,6 +64,12 @@
             <groupId>io.opentelemetry.instrumentation</groupId>
             <artifactId>opentelemetry-logback-appender-1.0</artifactId>
             <version>2.10.0-alpha</version>
+        </dependency>
+        <!-- OpenTelemetry Spring Web Instrumentation -->
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-spring-web-3.1</artifactId>
+            <version>${opentelemetry-instrumentation.version}-alpha</version>
         </dependency>
 
         <!-- SpringDoc OpenAPI / Swagger UI -->

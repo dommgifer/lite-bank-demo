@@ -1,5 +1,7 @@
 package com.litebank.exchangeservice.config;
 
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.instrumentation.spring.web.v3_1.SpringWebTelemetry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
@@ -8,7 +10,11 @@ import org.springframework.web.client.RestTemplate;
 public class RestTemplateConfig {
 
     @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
+    public RestTemplate restTemplate(OpenTelemetry openTelemetry) {
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.getInterceptors().add(
+            SpringWebTelemetry.create(openTelemetry).newInterceptor()
+        );
+        return restTemplate;
     }
 }

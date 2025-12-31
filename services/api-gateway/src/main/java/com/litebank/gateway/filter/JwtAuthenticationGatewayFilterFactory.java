@@ -1,8 +1,6 @@
 package com.litebank.gateway.filter;
 
 import com.litebank.gateway.util.JwtUtil;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.Tracer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,14 +21,12 @@ public class JwtAuthenticationGatewayFilterFactory
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationGatewayFilterFactory.class);
 
     private final JwtUtil jwtUtil;
-    private final Tracer tracer;
 
     @Autowired
-    public JwtAuthenticationGatewayFilterFactory(JwtUtil jwtUtil, Tracer tracer) {
+    public JwtAuthenticationGatewayFilterFactory(JwtUtil jwtUtil) {
         super(Config.class);
         this.jwtUtil = jwtUtil;
-        this.tracer = tracer;
-        log.info("JwtAuthenticationGatewayFilterFactory initialized with JwtUtil and Tracer");
+        log.info("JwtAuthenticationGatewayFilterFactory initialized with JwtUtil");
     }
 
     @Override
@@ -43,17 +39,11 @@ public class JwtAuthenticationGatewayFilterFactory
 
             log.info("JWT Filter processing request: {}", path);
 
-            // Create span
-            Span span = tracer.spanBuilder("JwtAuthenticationFilter").startSpan();
-            span.setAttribute("http.path", path);
-
             // Check if path is excluded
             if (config.getExcludePaths() != null) {
                 for (String excludedPath : config.getExcludePaths().split(",")) {
                     if (path.contains(excludedPath.trim())) {
                         log.info("Path {} is excluded from JWT validation", path);
-                        span.setAttribute("jwt.validation", "skipped");
-                        span.end();
                         return chain.filter(exchange);
                     }
                 }
@@ -63,9 +53,6 @@ public class JwtAuthenticationGatewayFilterFactory
             String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 log.warn("Missing or invalid Authorization header for path: {}", path);
-                span.setAttribute("jwt.validation", "failed");
-                span.setAttribute("error.reason", "missing_token");
-                span.end();
                 return onError(exchange, "Missing or invalid Authorization header", HttpStatus.UNAUTHORIZED);
             }
 
@@ -74,16 +61,11 @@ public class JwtAuthenticationGatewayFilterFactory
             // Validate token
             if (!jwtUtil.validateToken(token)) {
                 log.warn("Invalid JWT token for path: {}", path);
-                span.setAttribute("jwt.validation", "failed");
-                span.setAttribute("error.reason", "invalid_token");
-                span.end();
                 return onError(exchange, "Invalid or expired JWT token", HttpStatus.UNAUTHORIZED);
             }
 
             // Extract user ID
             String userId = jwtUtil.extractUserId(token);
-            span.setAttribute("user.id", userId);
-            span.setAttribute("jwt.validation", "success");
 
             log.info("JWT validation successful for user: {}, path: {}", userId, path);
 
@@ -92,12 +74,8 @@ public class JwtAuthenticationGatewayFilterFactory
                     .header("X-User-Id", userId)
                     .build();
 
-            // Continue the chain and end span when done
-            return chain.filter(exchange.mutate().request(modifiedRequest).build())
-                    .doFinally(signalType -> {
-                        log.info("Request completed for path: {}, signal: {}", path, signalType);
-                        span.end();
-                    });
+            // Continue the chain
+            return chain.filter(exchange.mutate().request(modifiedRequest).build());
         };
     }
 

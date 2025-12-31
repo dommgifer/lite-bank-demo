@@ -37,7 +37,9 @@ public class TransactionService {
 
     @Transactional(readOnly = true)
     public Transaction getTransactionById(Long transactionId) {
-        Span span = tracer.spanBuilder("TransactionService.getTransactionById").startSpan();
+        Span span = tracer.spanBuilder("TransactionService.getTransactionById")
+                .setParent(io.opentelemetry.context.Context.current())
+                .startSpan();
         try (Scope scope = span.makeCurrent()) {
             span.setAttribute("transaction.id", transactionId);
 
@@ -50,7 +52,9 @@ public class TransactionService {
 
     @Transactional(readOnly = true)
     public Page<Transaction> getTransactionsByAccount(Long accountId, int page, int size) {
-        Span span = tracer.spanBuilder("TransactionService.getTransactionsByAccount").startSpan();
+        Span span = tracer.spanBuilder("TransactionService.getTransactionsByAccount")
+                .setParent(io.opentelemetry.context.Context.current())
+                .startSpan();
         try (Scope scope = span.makeCurrent()) {
             span.setAttribute("account.id", accountId);
             span.setAttribute("page", page);
@@ -65,7 +69,9 @@ public class TransactionService {
 
     @Transactional(readOnly = true)
     public Page<Transaction> queryTransactions(TransactionQueryParams params) {
-        Span span = tracer.spanBuilder("TransactionService.queryTransactions").startSpan();
+        Span span = tracer.spanBuilder("TransactionService.queryTransactions")
+                .setParent(io.opentelemetry.context.Context.current())
+                .startSpan();
         try (Scope scope = span.makeCurrent()) {
             int page = params.getPage() != null ? params.getPage() : 0;
             int size = params.getSize() != null ? params.getSize() : 20;
@@ -101,7 +107,9 @@ public class TransactionService {
 
     @Transactional(readOnly = true)
     public List<Transaction> getTransactionsByTraceId(String traceId) {
-        Span span = tracer.spanBuilder("TransactionService.getTransactionsByTraceId").startSpan();
+        Span span = tracer.spanBuilder("TransactionService.getTransactionsByTraceId")
+                .setParent(io.opentelemetry.context.Context.current())
+                .startSpan();
         try (Scope scope = span.makeCurrent()) {
             span.setAttribute("trace.id", traceId);
             return transactionRepository.findByTraceId(traceId);
@@ -114,7 +122,9 @@ public class TransactionService {
 
     @Transactional
     public Transaction createTransaction(CreateTransactionRequest request, String traceId) {
-        Span span = tracer.spanBuilder("TransactionService.createTransaction").startSpan();
+        Span span = tracer.spanBuilder("TransactionService.createTransaction")
+                .setParent(io.opentelemetry.context.Context.current())
+                .startSpan();
         try (Scope scope = span.makeCurrent()) {
             span.setAttribute("account.id", request.getAccountId());
             span.setAttribute("transaction.type", request.getTransactionType());
@@ -150,7 +160,9 @@ public class TransactionService {
      */
     @Transactional
     public Transaction credit(CreditRequest request, String traceId) {
-        Span span = tracer.spanBuilder("TransactionService.credit").startSpan();
+        Span span = tracer.spanBuilder("TransactionService.credit")
+                .setParent(io.opentelemetry.context.Context.current())
+                .startSpan();
         try (Scope scope = span.makeCurrent()) {
             span.setAttribute("account.id", request.getAccountId());
             span.setAttribute("transaction.type", request.getTransactionType());
@@ -211,7 +223,9 @@ public class TransactionService {
      */
     @Transactional
     public Transaction debit(DebitRequest request, String traceId) {
-        Span span = tracer.spanBuilder("TransactionService.debit").startSpan();
+        Span span = tracer.spanBuilder("TransactionService.debit")
+                .setParent(io.opentelemetry.context.Context.current())
+                .startSpan();
         try (Scope scope = span.makeCurrent()) {
             span.setAttribute("account.id", request.getAccountId());
             span.setAttribute("transaction.type", request.getTransactionType());
@@ -279,7 +293,9 @@ public class TransactionService {
      */
     @Transactional
     public List<Transaction> transfer(TransferRequest request, String traceId) {
-        Span span = tracer.spanBuilder("TransactionService.transfer").startSpan();
+        Span span = tracer.spanBuilder("TransactionService.transfer")
+                .setParent(io.opentelemetry.context.Context.current())
+                .startSpan();
         try (Scope scope = span.makeCurrent()) {
             span.setAttribute("source.account.id", request.getSourceAccountId());
             span.setAttribute("destination.account.id", request.getDestinationAccountId());
@@ -375,7 +391,9 @@ public class TransactionService {
      */
     @Transactional
     public List<Transaction> exchange(ExchangeRequest request, String traceId) {
-        Span span = tracer.spanBuilder("TransactionService.exchange").startSpan();
+        Span span = tracer.spanBuilder("TransactionService.exchange")
+                .setParent(io.opentelemetry.context.Context.current())
+                .startSpan();
         try (Scope scope = span.makeCurrent()) {
             span.setAttribute("source.account.id", request.getSourceAccountId());
             span.setAttribute("destination.account.id", request.getDestinationAccountId());

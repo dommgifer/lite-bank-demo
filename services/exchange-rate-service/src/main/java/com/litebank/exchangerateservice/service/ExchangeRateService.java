@@ -48,6 +48,7 @@ public class ExchangeRateService {
 
     public ExchangeRateResponse getExchangeRate(String fromCurrency, String toCurrency) {
         Span span = tracer.spanBuilder("ExchangeRateService.getExchangeRate")
+                .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {
@@ -98,6 +99,7 @@ public class ExchangeRateService {
 
     public Set<String> getSupportedCurrencies() {
         Span span = tracer.spanBuilder("ExchangeRateService.getSupportedCurrencies")
+                .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {
@@ -111,6 +113,7 @@ public class ExchangeRateService {
 
     public BigDecimal convertAmount(String fromCurrency, String toCurrency, BigDecimal amount) {
         Span span = tracer.spanBuilder("ExchangeRateService.convertAmount")
+                .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {

@@ -31,6 +31,7 @@ public class DepositService {
 
     public DepositResponse executeDeposit(DepositRequest request) {
         Span span = tracer.spanBuilder("DepositService.executeDeposit")
+                .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
 
         String depositId = UUID.randomUUID().toString();
