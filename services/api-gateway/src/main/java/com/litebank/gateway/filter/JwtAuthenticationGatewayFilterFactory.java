@@ -69,9 +69,9 @@ public class JwtAuthenticationGatewayFilterFactory
 
             log.info("JWT validation successful for user: {}, path: {}", userId, path);
 
-            // Add user ID to headers
-            ServerHttpRequest modifiedRequest = request.mutate()
-                    .header("X-User-Id", userId)
+            // Add user ID to headers while preserving existing headers (including trace context)
+            ServerHttpRequest modifiedRequest = exchange.getRequest().mutate()
+                    .headers(headers -> headers.set("X-User-Id", userId))
                     .build();
 
             // Continue the chain
