@@ -378,10 +378,17 @@ services:
       context: ./services/api-gateway
       dockerfile: Dockerfile
     container_name: litebank-api-gateway
+    volumes:
+      - ./opentelemetry-javaagent.jar:/otel-auto-instrumentation-java/javaagent.jar:ro
     environment:
       JWT_SECRET: your-secret-key-change-in-production-min-256-bits-required-for-hs256-algorithm
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel-auto-instrumentation-java/javaagent.jar"
       OTEL_SERVICE_NAME: api-gateway
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACES_SAMPLER: always_on
+      OTEL_LOGS_EXPORTER: none
+      OTEL_METRICS_EXPORTER: none
       SPRING_PROFILES_ACTIVE: default
       JAVA_OPTS: "-Xms512m -Xmx1024m"
     ports:
