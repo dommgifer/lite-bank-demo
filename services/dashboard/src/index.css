@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+/* Custom Theme - Lite Bank Design System */
+@theme {
+  --color-primary: #0F766E;
+  --color-secondary: #14B8A6;
+  --color-cta: #0369A1;
+  --color-surface: #F0FDFA;
+  --color-text: #134E4A;
+  --color-border: #99F6E4;
+  --color-muted: #5EEAD4;
+
+  --font-heading: 'Poppins', sans-serif;
+  --font-body: 'Open Sans', sans-serif;
+}
+
+/* Base styles */
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-surface);
+  margin: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
