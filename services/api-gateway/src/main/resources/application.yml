@@ -48,6 +48,14 @@ spring:
           filters:
             - JwtAuthentication
 
+        # Recipient Service Routes (container internal port: 8081, part of account-service)
+        - id: recipient-service
+          uri: http://account-service:8081
+          predicates:
+            - Path=/api/v1/recipients/**
+          filters:
+            - JwtAuthentication
+
         # Transaction Service Routes (container internal port: 8082)
         - id: transaction-service
           uri: http://transaction-service:8082
