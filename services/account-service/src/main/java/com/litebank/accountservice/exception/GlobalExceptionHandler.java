@@ -38,6 +38,26 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(error, traceId));
     }
 
+    @ExceptionHandler(DuplicateAccountException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDuplicateAccountException(DuplicateAccountException ex) {
+        String traceId = Span.current().getSpanContext().getTraceId();
+
+        log.error("Duplicate account: {}, trace_id: {}", ex.getMessage(), traceId);
+
+        ApiResponse.ErrorDetails error = ApiResponse.ErrorDetails.builder()
+                .code("ERR_ACC_002")
+                .type("ACCOUNT_ALREADY_EXISTS")
+                .message(ex.getMessage())
+                .category("account")
+                .traceId(traceId)
+                .timestamp(Instant.now().toString())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(error, traceId));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException ex) {
         String traceId = Span.current().getSpanContext().getTraceId();

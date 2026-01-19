@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 public class AccountResponse {
 
     private Long accountId;
+    private String accountNumber;
     private Long userId;
     private String currency;
     private BigDecimal balance;
@@ -26,6 +27,7 @@ public class AccountResponse {
     public static AccountResponse fromEntity(Account account) {
         return AccountResponse.builder()
                 .accountId(account.getAccountId())
+                .accountNumber(account.getAccountNumber())
                 .userId(account.getUserId())
                 .currency(account.getCurrency())
                 .balance(account.getBalance())

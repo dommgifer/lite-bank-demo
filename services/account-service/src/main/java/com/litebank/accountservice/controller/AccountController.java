@@ -1,5 +1,6 @@
 package com.litebank.accountservice.controller;
 
+import com.litebank.accountservice.dto.AccountPublicInfoResponse;
 import com.litebank.accountservice.dto.AccountResponse;
 import com.litebank.accountservice.dto.ApiResponse;
 import com.litebank.accountservice.dto.BalanceResponse;
@@ -68,6 +69,29 @@ public class AccountController {
             List<AccountResponse> response = accounts.stream()
                     .map(AccountResponse::fromEntity)
                     .collect(Collectors.toList());
+
+            String traceId = span.getSpanContext().getTraceId();
+
+            return ResponseEntity.ok()
+                    .header("X-Trace-Id", traceId)
+                    .body(ApiResponse.success(response, traceId));
+
+        } finally {
+            span.end();
+        }
+    }
+
+    @GetMapping("/number/{accountNumber}")
+    public ResponseEntity<ApiResponse<AccountPublicInfoResponse>> getAccountByNumber(@PathVariable String accountNumber) {
+        Span span = tracer.spanBuilder("GET /api/v1/accounts/number/{accountNumber}")
+                .startSpan();
+
+        try (Scope scope = span.makeCurrent()) {
+            span.setAttribute("http.method", "GET");
+            span.setAttribute("http.route", "/api/v1/accounts/number/{accountNumber}");
+            span.setAttribute("account.number", accountNumber);
+
+            AccountPublicInfoResponse response = accountService.getPublicAccountInfo(accountNumber);
 
             String traceId = span.getSpanContext().getTraceId();
 
