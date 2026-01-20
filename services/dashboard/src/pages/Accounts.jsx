@@ -45,7 +45,7 @@ export default function Accounts() {
     setSelectedAccount(account)
     setDropdownOpen(false)
     try {
-      const res = await transactionAPI.getByAccountId(account.id)
+      const res = await transactionAPI.getByAccountId(account.accountId)
       const txData = res.data.data
       setTransactions(txData?.content || txData || [])
     } catch (error) {
@@ -115,10 +115,10 @@ export default function Accounts() {
           <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl border border-border shadow-lg z-10 overflow-hidden">
             {accounts.map((account) => {
               const icon = getCurrencyIcon(account.currency)
-              const isSelected = selectedAccount?.id === account.id
+              const isSelected = selectedAccount?.accountId === account.accountId
               return (
                 <button
-                  key={account.id}
+                  key={account.accountId}
                   onClick={() => selectAccount(account)}
                   className={`w-full flex items-center justify-between px-5 py-4 hover:bg-surface transition-colors duration-200 cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}
                 >
