@@ -1,11 +1,14 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
+import LanguageSwitcher from './LanguageSwitcher'
 import {
   BellIcon,
   CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
 
 export default function Navbar() {
+  const { t } = useTranslation()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -15,11 +18,11 @@ export default function Navbar() {
   }
 
   const navLinks = [
-    { to: '/', label: 'Dashboard' },
-    { to: '/accounts', label: 'Accounts' },
-    { to: '/transfer', label: 'Transfer' },
-    { to: '/exchange', label: 'Exchange' },
-    { to: '/history', label: 'History' },
+    { to: '/', label: t('nav.dashboard') },
+    { to: '/accounts', label: t('nav.accounts') },
+    { to: '/transfer', label: t('nav.transfer') },
+    { to: '/exchange', label: t('nav.exchange') },
+    { to: '/history', label: t('nav.history') },
   ]
 
   return (
@@ -54,14 +57,15 @@ export default function Navbar() {
           </div>
 
           {/* User Profile */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <LanguageSwitcher />
             <button className="p-2 rounded-xl hover:bg-primary/5 transition-colors duration-200 cursor-pointer">
               <BellIcon className="w-6 h-6 text-text/70" />
             </button>
             <div
               onClick={handleLogout}
               className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-              title="Click to logout"
+              title={t('nav.clickToLogout')}
             >
               <span className="text-white font-semibold">
                 {user?.username?.charAt(0).toUpperCase() || 'U'}
