@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import {
   CurrencyDollarIcon,
@@ -12,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 export default function Login() {
+  const { t } = useTranslation()
   const [username, setUsername] = useState('alice')
   const [password, setPassword] = useState('password123')
   const [showPassword, setShowPassword] = useState(false)
@@ -43,10 +45,10 @@ export default function Login() {
   }
 
   const features = [
-    'Multi-currency accounts',
-    'Real-time exchange rates',
-    'Instant transfers',
-    'Bank-grade security',
+    t('auth.features.multiCurrency'),
+    t('auth.features.realTimeRates'),
+    t('auth.features.instantTransfers'),
+    t('auth.features.bankSecurity'),
   ]
 
   return (
@@ -64,10 +66,10 @@ export default function Login() {
 
         <div className="space-y-6">
           <h1 className="text-4xl font-heading font-bold text-white leading-tight">
-            Banking made simple,<br />secure, and smart.
+            {t('auth.bankingSlogan')}
           </h1>
           <p className="text-white/80 text-lg max-w-md">
-            Manage your finances with confidence. Transfer money, exchange currencies, and track your transactions all in one place.
+            {t('auth.bankingDescription')}
           </p>
 
           <div className="space-y-4 pt-4">
@@ -83,7 +85,7 @@ export default function Login() {
         </div>
 
         <div className="text-white/60 text-sm">
-          <p>&copy; 2026 Lite Bank. All rights reserved.</p>
+          <p>{t('auth.copyright')}</p>
         </div>
       </div>
 
@@ -101,8 +103,8 @@ export default function Login() {
           {/* Login Card */}
           <div className="bg-white rounded-2xl shadow-lg border border-border p-8">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-heading font-bold text-text mb-2">Welcome back</h2>
-              <p className="text-text/60">Sign in to your account to continue</p>
+              <h2 className="text-2xl font-heading font-bold text-text mb-2">{t('auth.welcomeBack')}</h2>
+              <p className="text-text/60">{t('auth.signInToContinue')}</p>
             </div>
 
             {error && (
@@ -114,14 +116,14 @@ export default function Login() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Username */}
               <div>
-                <label className="block text-sm font-medium text-text mb-2">Username</label>
+                <label className="block text-sm font-medium text-text mb-2">{t('auth.username')}</label>
                 <div className="relative">
                   <UserIcon className="w-5 h-5 text-text/40 absolute left-4 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter your username"
+                    placeholder={t('auth.enterUsername')}
                     className="w-full pl-12 pr-4 py-3 bg-surface border border-border rounded-xl text-text placeholder-text/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-200"
                     required
                   />
@@ -130,14 +132,14 @@ export default function Login() {
 
               {/* Password */}
               <div>
-                <label className="block text-sm font-medium text-text mb-2">Password</label>
+                <label className="block text-sm font-medium text-text mb-2">{t('auth.password')}</label>
                 <div className="relative">
                   <LockClosedIcon className="w-5 h-5 text-text/40 absolute left-4 top-1/2 -translate-y-1/2" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
+                    placeholder={t('auth.enterPassword')}
                     className="w-full pl-12 pr-12 py-3 bg-surface border border-border rounded-xl text-text placeholder-text/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-200"
                     required
                   />
@@ -164,10 +166,10 @@ export default function Login() {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
                   />
-                  <span className="text-sm text-text/70">Remember me</span>
+                  <span className="text-sm text-text/70">{t('auth.rememberMe')}</span>
                 </label>
                 <a href="#" className="text-sm text-primary hover:text-primary/80 cursor-pointer">
-                  Forgot password?
+                  {t('auth.forgotPassword')}
                 </a>
               </div>
 
@@ -181,7 +183,7 @@ export default function Login() {
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                 ) : (
                   <>
-                    <span>Sign In</span>
+                    <span>{t('auth.signIn')}</span>
                     <ArrowRightIcon className="w-5 h-5" />
                   </>
                 )}
@@ -189,16 +191,16 @@ export default function Login() {
             </form>
 
             <p className="text-center mt-6 text-text/60">
-              Don't have an account?{' '}
+              {t('auth.noAccount')}{' '}
               <a href="#" className="text-primary font-medium hover:text-primary/80 cursor-pointer">
-                Sign up
+                {t('auth.signUp')}
               </a>
             </p>
           </div>
 
           {/* Demo Credentials */}
           <div className="mt-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
-            <p className="text-sm text-primary font-medium mb-2">Demo Credentials</p>
+            <p className="text-sm text-primary font-medium mb-2">{t('auth.demoCredentials')}</p>
             <div className="text-sm text-text/70 space-y-1">
               <p><span className="text-text/50">Username:</span> alice</p>
               <p><span className="text-text/50">Password:</span> password123</p>

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { accountAPI, transactionAPI, exchangeAPI, depositWithdrawAPI } from '../services/api'
 import {
-  CreditCardIcon,
   ArrowsRightLeftIcon,
   CurrencyDollarIcon,
   PlusIcon,
@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 export default function Dashboard() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const [accounts, setAccounts] = useState([])
   const [transactions, setTransactions] = useState([])
@@ -58,10 +59,33 @@ export default function Dashboard() {
     }
   }
 
-  const totalBalance = accounts.reduce((sum, acc) => {
-    // Simple conversion - in real app would use exchange rates
-    return sum + (acc.balance || 0)
+  // 匯率表（外幣換算成台幣）
+  const exchangeRatesToTWD = {
+    'USD': 31.25,
+    'EUR': 33.85,
+    'JPY': 0.21,
+    'GBP': 39.50,
+    'TWD': 1,
+  }
+
+  // 分離台幣和外幣帳戶
+  const twdAccounts = accounts.filter(acc => acc.currency === 'TWD')
+  const foreignAccounts = accounts.filter(acc => acc.currency !== 'TWD')
+
+  // 台幣總額（直接加總）
+  const twdTotal = twdAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0)
+
+  // 外幣總額（換算成台幣）
+  const foreignTotalInTWD = foreignAccounts.reduce((sum, acc) => {
+    const rate = exchangeRatesToTWD[acc.currency] || 1
+    return sum + (acc.balance || 0) * rate
   }, 0)
+
+  // 換算單一帳戶餘額為台幣
+  const convertToTWD = (balance, currency) => {
+    const rate = exchangeRatesToTWD[currency] || 1
+    return balance * rate
+  }
 
   const getCurrencyIcon = (currency) => {
     const icons = {
@@ -69,6 +93,7 @@ export default function Dashboard() {
       EUR: { symbol: '€', bg: 'bg-purple-100', text: 'text-purple-600' },
       TWD: { symbol: 'NT', bg: 'bg-orange-100', text: 'text-orange-600' },
       JPY: { symbol: '¥', bg: 'bg-red-100', text: 'text-red-600' },
+      GBP: { symbol: '£', bg: 'bg-blue-100', text: 'text-blue-600' },
     }
     return icons[currency] || icons.USD
   }
@@ -160,58 +185,88 @@ export default function Dashboard() {
       {/* Welcome Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-heading font-bold text-text mb-2">
-          Welcome back, {user?.username || 'User'}
+          {t('dashboard.welcomeBack', { name: user?.username || 'User' })}
         </h1>
-        <p className="text-text/60">Here's what's happening with your accounts today.</p>
+        <p className="text-text/60">{t('dashboard.welcomeSubtitle')}</p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Total Balance Card */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-border hover:shadow-md transition-shadow duration-200 cursor-pointer">
+      {/* Stats Cards - 台幣與外幣分開顯示 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* 台幣資產卡片 */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-border hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-              <CreditCardIcon className="w-6 h-6 text-primary" />
+            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+              <span className="text-orange-600 font-bold text-lg">NT</span>
             </div>
-            <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">+12.5%</span>
+            <span className="text-xs text-text/50 bg-surface px-2 py-1 rounded-full">{t('dashboard.twdAssets')}</span>
           </div>
-          <p className="text-text/60 text-sm mb-1">Total Balance</p>
-          <p className="text-2xl font-heading font-bold text-text">{formatCurrency(totalBalance)}</p>
+          <p className="text-text/60 text-sm mb-1">{t('dashboard.twdTotal')}</p>
+          <p className="text-3xl font-heading font-bold text-text">
+            {formatCurrency(twdTotal, 'TWD')}
+          </p>
+          {twdAccounts.length === 0 && (
+            <p className="text-text/40 text-sm mt-2">{t('dashboard.noTwdAccount')}</p>
+          )}
         </div>
 
-        {/* Account Cards */}
-        {accounts.slice(0, 3).map((account) => {
-          const icon = getCurrencyIcon(account.currency)
-          return (
-            <div
-              key={account.accountId}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-border hover:shadow-md transition-shadow duration-200 cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className={`w-12 h-12 ${icon.bg} rounded-xl flex items-center justify-center`}>
-                  <span className={`${icon.text} font-bold`}>{icon.symbol}</span>
-                </div>
-                <span className="text-xs text-text/40">{account.currency}</span>
-              </div>
-              <p className="text-text/60 text-sm mb-1">{account.currency} Account</p>
-              <p className="text-2xl font-heading font-bold text-text">
-                {formatCurrency(account.balance, account.currency)}
-              </p>
+        {/* 外幣資產卡片 */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-border hover:shadow-md transition-shadow duration-200">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+              <CurrencyDollarIcon className="w-6 h-6 text-primary" />
             </div>
-          )
-        })}
+            <span className="text-xs text-text/50 bg-surface px-2 py-1 rounded-full">{t('dashboard.foreignAssets')}</span>
+          </div>
+          <p className="text-text/60 text-sm mb-1">{t('dashboard.foreignTotal')}</p>
+          <p className="text-3xl font-heading font-bold text-text">
+            ≈ {formatCurrency(foreignTotalInTWD, 'TWD')}
+          </p>
+          <p className="text-text/40 text-xs mt-1">{t('dashboard.basedOnRate')}</p>
+        </div>
       </div>
+
+      {/* 外幣帳戶明細 */}
+      {foreignAccounts.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-heading font-semibold text-text mb-4">{t('dashboard.foreignAccountDetails')}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {foreignAccounts.map((account) => {
+              const icon = getCurrencyIcon(account.currency)
+              const twdValue = convertToTWD(account.balance, account.currency)
+              return (
+                <div
+                  key={account.accountId}
+                  className="bg-white rounded-2xl p-5 shadow-sm border border-border hover:shadow-md transition-shadow duration-200"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`w-10 h-10 ${icon.bg} rounded-xl flex items-center justify-center`}>
+                      <span className={`${icon.text} font-bold text-sm`}>{icon.symbol}</span>
+                    </div>
+                    <span className="text-xs font-medium text-text/60 bg-surface px-2 py-1 rounded-full">{account.currency}</span>
+                  </div>
+                  <p className="text-xl font-heading font-bold text-text">
+                    {formatCurrency(account.balance, account.currency)}
+                  </p>
+                  <p className="text-text/50 text-sm mt-1">
+                    ≈ {formatCurrency(twdValue, 'TWD')}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chart Section */}
         <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-border">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-heading font-semibold text-text">Balance Trend</h2>
+            <h2 className="text-lg font-heading font-semibold text-text">{t('dashboard.balanceTrend')}</h2>
             <div className="flex space-x-2">
-              <button className="px-3 py-1 text-sm bg-primary/10 text-primary rounded-lg cursor-pointer">Week</button>
-              <button className="px-3 py-1 text-sm text-text/60 hover:bg-primary/5 rounded-lg cursor-pointer">Month</button>
-              <button className="px-3 py-1 text-sm text-text/60 hover:bg-primary/5 rounded-lg cursor-pointer">Year</button>
+              <button className="px-3 py-1 text-sm bg-primary/10 text-primary rounded-lg cursor-pointer">{t('dashboard.week')}</button>
+              <button className="px-3 py-1 text-sm text-text/60 hover:bg-primary/5 rounded-lg cursor-pointer">{t('dashboard.month')}</button>
+              <button className="px-3 py-1 text-sm text-text/60 hover:bg-primary/5 rounded-lg cursor-pointer">{t('dashboard.year')}</button>
             </div>
           </div>
           {/* Chart Placeholder */}
@@ -231,35 +286,35 @@ export default function Dashboard() {
 
         {/* Quick Actions */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-border">
-          <h2 className="text-lg font-heading font-semibold text-text mb-6">Quick Actions</h2>
+          <h2 className="text-lg font-heading font-semibold text-text mb-6">{t('dashboard.quickActions')}</h2>
           <div className="space-y-3">
             <Link
               to="/transfer"
               className="w-full flex items-center space-x-4 p-4 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors duration-200 cursor-pointer"
             >
               <ArrowsRightLeftIcon className="w-6 h-6" />
-              <span className="font-medium">Transfer Money</span>
+              <span className="font-medium">{t('dashboard.transferMoney')}</span>
             </Link>
             <Link
               to="/exchange"
               className="w-full flex items-center space-x-4 p-4 rounded-xl border-2 border-primary/20 text-primary hover:bg-primary/5 transition-colors duration-200 cursor-pointer"
             >
               <CurrencyDollarIcon className="w-6 h-6" />
-              <span className="font-medium">Exchange Currency</span>
+              <span className="font-medium">{t('dashboard.exchangeCurrency')}</span>
             </Link>
             <button
               onClick={() => openModal('deposit')}
               className="w-full flex items-center space-x-4 p-4 rounded-xl border-2 border-primary/20 text-primary hover:bg-primary/5 transition-colors duration-200 cursor-pointer"
             >
               <PlusIcon className="w-6 h-6" />
-              <span className="font-medium">Deposit</span>
+              <span className="font-medium">{t('dashboard.deposit')}</span>
             </button>
             <button
               onClick={() => openModal('withdraw')}
               className="w-full flex items-center space-x-4 p-4 rounded-xl border-2 border-primary/20 text-primary hover:bg-primary/5 transition-colors duration-200 cursor-pointer"
             >
               <MinusIcon className="w-6 h-6" />
-              <span className="font-medium">Withdraw</span>
+              <span className="font-medium">{t('dashboard.withdraw')}</span>
             </button>
           </div>
         </div>
@@ -268,14 +323,14 @@ export default function Dashboard() {
       {/* Recent Transactions */}
       <div className="mt-6 bg-white rounded-2xl p-6 shadow-sm border border-border">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-heading font-semibold text-text">Recent Transactions</h2>
+          <h2 className="text-lg font-heading font-semibold text-text">{t('dashboard.recentTransactions')}</h2>
           <Link to="/history" className="text-sm text-primary hover:text-primary/80 cursor-pointer">
-            View All
+            {t('common.viewAll')}
           </Link>
         </div>
         <div className="space-y-4">
           {transactions.length === 0 ? (
-            <p className="text-center text-text/50 py-8">No transactions yet</p>
+            <p className="text-center text-text/50 py-8">{t('dashboard.noTransactions')}</p>
           ) : (
             transactions.slice(0, 4).map((tx) => (
               <div
@@ -331,8 +386,8 @@ export default function Dashboard() {
       {/* Exchange Rates Widget */}
       <div className="mt-6 bg-white rounded-2xl p-6 shadow-sm border border-border">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-heading font-semibold text-text">Live Exchange Rates</h2>
-          <span className="text-xs text-text/40">Updated: Just now</span>
+          <h2 className="text-lg font-heading font-semibold text-text">{t('dashboard.liveExchangeRates')}</h2>
+          <span className="text-xs text-text/40">{t('dashboard.updated')}: {t('dashboard.justNow')}</span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
@@ -358,7 +413,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-heading font-semibold text-text">
-                {modalMode === 'deposit' ? 'Deposit Funds' : 'Withdraw Funds'}
+                {modalMode === 'deposit' ? t('dashboard.depositFunds') : t('dashboard.withdrawFunds')}
               </h2>
               <button
                 onClick={closeModal}
@@ -372,7 +427,7 @@ export default function Dashboard() {
               {/* Account Selection */}
               <div>
                 <label className="block text-sm font-medium text-text/70 mb-2">
-                  Select Account
+                  {t('dashboard.selectAccount')}
                 </label>
                 <select
                   value={selectedAccountId}
@@ -380,7 +435,7 @@ export default function Dashboard() {
                   className="w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                 >
                   {accounts.length === 0 ? (
-                    <option value="">No accounts available</option>
+                    <option value="">{t('dashboard.noAccountsAvailable')}</option>
                   ) : (
                     accounts.map((acc) => (
                       <option key={acc.accountId} value={String(acc.accountId)}>
@@ -394,13 +449,13 @@ export default function Dashboard() {
               {/* Amount Input */}
               <div>
                 <label className="block text-sm font-medium text-text/70 mb-2">
-                  Amount
+                  {t('dashboard.amount')}
                 </label>
                 <input
                   type="number"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Enter amount"
+                  placeholder={t('dashboard.enterAmount')}
                   min="0.01"
                   step="0.01"
                   className="w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
@@ -424,13 +479,13 @@ export default function Dashboard() {
               {/* Description Input */}
               <div>
                 <label className="block text-sm font-medium text-text/70 mb-2">
-                  Description (Optional)
+                  {t('dashboard.descriptionOptional')}
                 </label>
                 <input
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Add a note..."
+                  placeholder={t('dashboard.addNote')}
                   className="w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                 />
               </div>
@@ -456,7 +511,7 @@ export default function Dashboard() {
                   : 'bg-red-500 hover:bg-red-600 text-white'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                {isSubmitting ? 'Processing...' : modalMode === 'deposit' ? 'Deposit' : 'Withdraw'}
+                {isSubmitting ? t('dashboard.processing') : modalMode === 'deposit' ? t('dashboard.deposit') : t('dashboard.withdraw')}
               </button>
             </form>
           </div>

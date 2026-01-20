@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { accountAPI, transferAPI, recipientAPI } from '../services/api'
 import { ArrowDownIcon, ArrowRightIcon, UserIcon } from '@heroicons/react/24/outline'
 
 export default function Transfer() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const [step, setStep] = useState(1) // 1: Details, 2: Confirm, 3: Complete
   const [accounts, setAccounts] = useState([])
@@ -187,8 +189,8 @@ export default function Transfer() {
     <div>
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-heading font-bold text-text mb-2">Transfer Money</h1>
-        <p className="text-text/60">Send money to other accounts instantly</p>
+        <h1 className="text-3xl font-heading font-bold text-text mb-2">{t('transfer.title')}</h1>
+        <p className="text-text/60">{t('transfer.subtitle')}</p>
       </div>
 
       <div className={`grid grid-cols-1 ${step === 1 ? 'lg:grid-cols-3' : ''} gap-6`}>
@@ -201,21 +203,21 @@ export default function Transfer() {
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
                   step >= 1 ? 'bg-primary text-white' : 'bg-border text-text/50'
                 }`}>1</div>
-                <span className={`ml-2 ${step >= 1 ? 'font-medium text-text' : 'text-text/50'}`}>Details</span>
+                <span className={`ml-2 ${step >= 1 ? 'font-medium text-text' : 'text-text/50'}`}>{t('transfer.details')}</span>
               </div>
               <div className={`flex-1 h-0.5 mx-4 ${step >= 2 ? 'bg-primary' : 'bg-border'}`}></div>
               <div className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
                   step >= 2 ? 'bg-primary text-white' : 'bg-border text-text/50'
                 }`}>2</div>
-                <span className={`ml-2 ${step >= 2 ? 'font-medium text-text' : 'text-text/50'}`}>Confirm</span>
+                <span className={`ml-2 ${step >= 2 ? 'font-medium text-text' : 'text-text/50'}`}>{t('transfer.confirm')}</span>
               </div>
               <div className={`flex-1 h-0.5 mx-4 ${step >= 3 ? 'bg-primary' : 'bg-border'}`}></div>
               <div className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
                   step >= 3 ? 'bg-primary text-white' : 'bg-border text-text/50'
                 }`}>3</div>
-                <span className={`ml-2 ${step >= 3 ? 'font-medium text-text' : 'text-text/50'}`}>Complete</span>
+                <span className={`ml-2 ${step >= 3 ? 'font-medium text-text' : 'text-text/50'}`}>{t('transfer.complete')}</span>
               </div>
             </div>
 
@@ -234,7 +236,7 @@ export default function Transfer() {
               <>
             {/* From Account */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-text mb-2">From Account</label>
+              <label className="block text-sm font-medium text-text mb-2">{t('transfer.fromAccount')}</label>
               <select
                 value={fromAccount?.accountId || ''}
                 onChange={(e) => setFromAccount(accounts.find(a => a.accountId === parseInt(e.target.value)))}
@@ -258,14 +260,14 @@ export default function Transfer() {
             {/* To Recipient */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-text mb-2">
-                To Recipient Account Number
+                {t('transfer.toRecipient')}
               </label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={toAccountNumber}
                   onChange={(e) => setToAccountNumber(e.target.value)}
-                  placeholder="Enter account number (e.g., 001-03-0000006)"
+                  placeholder={t('transfer.enterAccountNumber')}
                   className="flex-1 px-4 py-3 bg-surface border border-border rounded-xl text-text placeholder-text/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-200"
                 />
                 <button
@@ -274,7 +276,7 @@ export default function Transfer() {
                   disabled={lookingUpAccount || !toAccountNumber}
                   className="px-6 py-3 bg-primary/10 border border-primary text-primary rounded-xl font-medium hover:bg-primary/20 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {lookingUpAccount ? 'Looking up...' : 'Lookup'}
+                  {lookingUpAccount ? t('transfer.lookingUp') : t('transfer.lookup')}
                 </button>
               </div>
 
@@ -304,20 +306,20 @@ export default function Transfer() {
                       }}
                       className="text-sm text-text/50 hover:text-text"
                     >
-                      Clear
+                      {t('common.clear')}
                     </button>
                   </div>
                 </div>
               )}
 
               <p className="mt-2 text-sm text-text/50">
-                Or select from Saved Recipients below →
+                {t('transfer.orSelectRecipient')}
               </p>
             </div>
 
             {/* Amount */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-text mb-2">Amount</label>
+              <label className="block text-sm font-medium text-text mb-2">{t('transfer.amount')}</label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-semibold text-text/50">
                   {getCurrencyIcon(fromAccount?.currency).symbol}
@@ -333,7 +335,7 @@ export default function Transfer() {
                 </span>
               </div>
               <p className="mt-2 text-sm text-text/50">
-                Available: {formatCurrency(fromAccount?.balance || 0, fromAccount?.currency)}
+                {t('transfer.available')}: {formatCurrency(fromAccount?.balance || 0, fromAccount?.currency)}
               </p>
             </div>
 
@@ -358,17 +360,17 @@ export default function Transfer() {
                 onClick={() => setAmount(String(fromAccount?.balance || 0))}
                 className="px-4 py-2 bg-surface border border-border rounded-lg text-sm text-text hover:border-primary hover:bg-primary/5 transition-colors duration-200 cursor-pointer"
               >
-                Max
+                {t('common.max')}
               </button>
             </div>
 
             {/* Note */}
             <div className="mb-8">
-              <label className="block text-sm font-medium text-text mb-2">Note (Optional)</label>
+              <label className="block text-sm font-medium text-text mb-2">{t('transfer.noteOptional')}</label>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Add a note for this transfer..."
+                placeholder={t('transfer.addNoteForTransfer')}
                 rows="2"
                 className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-text placeholder-text/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-200 resize-none"
               />
@@ -380,7 +382,7 @@ export default function Transfer() {
               disabled={!fromAccount || !toAccount}
               className="w-full py-4 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors duration-200 cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span>Continue to Confirm</span>
+              <span>{t('transfer.continueToConfirm')}</span>
               <ArrowRightIcon className="w-5 h-5" />
             </button>
             </>

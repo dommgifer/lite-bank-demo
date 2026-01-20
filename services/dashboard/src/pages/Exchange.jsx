@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { accountAPI, exchangeAPI } from '../services/api'
 import {
@@ -8,7 +9,9 @@ import {
 } from '@heroicons/react/24/outline'
 
 export default function Exchange() {
+  const { t } = useTranslation()
   const { user } = useAuth()
+  const [step, setStep] = useState(1) // 1: Exchange, 2: Complete
   const [accounts, setAccounts] = useState([])
   const [fromCurrency, setFromCurrency] = useState('USD')
   const [toCurrency, setToCurrency] = useState('EUR')
@@ -16,6 +19,7 @@ export default function Exchange() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState(null)
+  const [exchangeResult, setExchangeResult] = useState(null)
 
   // Mock exchange rates
   const exchangeRates = {
@@ -66,22 +70,68 @@ export default function Exchange() {
     setSubmitting(true)
     setMessage(null)
 
+    // 找到對應幣別的帳戶
+    const sourceAccount = accounts.find(acc => acc.currency === fromCurrency)
+    const destinationAccount = accounts.find(acc => acc.currency === toCurrency)
+
+    if (!sourceAccount) {
+      setMessage({ type: 'error', text: `No ${fromCurrency} account found` })
+      setSubmitting(false)
+      return
+    }
+
+    if (!destinationAccount) {
+      setMessage({ type: 'error', text: `No ${toCurrency} account found` })
+      setSubmitting(false)
+      return
+    }
+
+    // 保存原始資料
+    const originalFromCurrency = fromCurrency
+    const originalToCurrency = toCurrency
+    const originalAmount = parseFloat(amount.replace(/,/g, ''))
+    const originalRate = getRate()
+    const originalConvertedAmount = getConvertedAmount()
+
     try {
-      await exchangeAPI.exchange({
-        fromCurrency,
-        toCurrency,
-        amount: parseFloat(amount.replace(/,/g, '')),
+      const response = await exchangeAPI.exchange({
+        sourceAccountId: sourceAccount.accountId,
+        destinationAccountId: destinationAccount.accountId,
+        sourceCurrency: fromCurrency,
+        destinationCurrency: toCurrency,
+        amount: originalAmount,
       })
-      setMessage({ type: 'success', text: 'Exchange successful!' })
+
+      // 設定換匯結果
+      setExchangeResult({
+        ...response.data.data,
+        fromCurrency: originalFromCurrency,
+        toCurrency: originalToCurrency,
+        fromAmount: originalAmount,
+        toAmount: originalConvertedAmount,
+        rate: originalRate,
+        sourceAccount: sourceAccount,
+        destinationAccount: destinationAccount,
+      })
+      setStep(2)
       loadAccounts()
+      window.scrollTo(0, 0)
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.message || 'Exchange failed'
+        text: error.response?.data?.error?.message || error.response?.data?.message || 'Exchange failed'
       })
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleNewExchange = () => {
+    setStep(1)
+    setAmount('1000')
+    setMessage(null)
+    setExchangeResult(null)
+    window.scrollTo(0, 0)
   }
 
   const getCurrencyIcon = (currency) => {
@@ -126,207 +176,304 @@ export default function Exchange() {
     <div>
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-heading font-bold text-text mb-2">Currency Exchange</h1>
-        <p className="text-text/60">Exchange currencies at competitive rates</p>
+        <h1 className="text-3xl font-heading font-bold text-text mb-2">{t('exchange.title')}</h1>
+        <p className="text-text/60">{t('exchange.subtitle')}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Exchange Calculator */}
-        <div className="lg:col-span-2">
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-border p-6">
-            {message && (
-              <div className={`mb-6 p-4 rounded-xl ${
-                message.type === 'success'
-                  ? 'bg-green-50 border border-green-200 text-green-600'
-                  : 'bg-red-50 border border-red-200 text-red-600'
-              }`}>
-                {message.text}
+      {/* Step 2: Exchange Complete */}
+      {step === 2 && exchangeResult && (
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-sm border border-border p-6">
+            {/* Success Message */}
+            <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center mb-6">
+              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
               </div>
-            )}
+              <h3 className="text-2xl font-heading font-bold text-green-700 mb-2">{t('exchange.success')}</h3>
+              <p className="text-green-600">{t('exchange.successMessage')}</p>
+            </div>
 
-            {/* From Currency */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-text mb-2">You Pay</label>
-              <div className="flex items-center space-x-4 p-4 bg-surface rounded-xl border border-border">
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
-                    className="w-full text-3xl font-bold text-text bg-transparent focus:outline-none"
-                  />
-                  <p className="text-sm text-text/50 mt-1">
-                    Available: {formatCurrency(getAccountBalance(fromCurrency))} {fromCurrency}
-                  </p>
-                </div>
-                <select
-                  value={fromCurrency}
-                  onChange={(e) => setFromCurrency(e.target.value)}
-                  className="flex items-center space-x-2 px-4 py-3 bg-white rounded-xl border border-border cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                  {currencies.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+            {/* Exchange Details */}
+            <div className="bg-surface rounded-xl p-6 space-y-4 mb-6">
+              <h4 className="font-semibold text-text">{t('exchange.exchangeDetails')}</h4>
+
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-text/60">{t('exchange.transactionId')}</span>
+                <span className="font-mono text-sm text-text">#{exchangeResult.exchangeId || exchangeResult.id || '-'}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-text/60">{t('exchange.fromAccount')}</span>
+                <span className="font-medium font-mono text-text">{exchangeResult.sourceAccount?.accountNumber}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-text/60">{t('exchange.toAccount')}</span>
+                <span className="font-medium font-mono text-text">{exchangeResult.destinationAccount?.accountNumber}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-text/60">{t('exchange.youPaid')}</span>
+                <span className="text-xl font-bold text-red-500">
+                  -{formatCurrency(exchangeResult.fromAmount)} {exchangeResult.fromCurrency}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-text/60">{t('exchange.youReceived')}</span>
+                <span className="text-xl font-bold text-green-600">
+                  +{formatCurrency(exchangeResult.toAmount)} {exchangeResult.toCurrency}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-text/60">{t('exchange.exchangeRate')}</span>
+                <span className="font-medium text-text">
+                  1 {exchangeResult.fromCurrency} = {exchangeResult.rate?.toFixed(4)} {exchangeResult.toCurrency}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-text/60">{t('exchange.exchangeFee')}</span>
+                <span className="text-green-600 font-medium">{t('common.free')}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-text/60">{t('exchange.dateTime')}</span>
+                <span className="text-text">{new Date(exchangeResult.createdAt || Date.now()).toLocaleString()}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span className="text-text/60">{t('common.status')}</span>
+                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                  {exchangeResult.status || 'COMPLETED'}
+                </span>
               </div>
             </div>
 
-            {/* Swap Button */}
-            <div className="flex justify-center -my-2 relative z-10">
+            {/* Action Buttons */}
+            <div className="flex gap-4">
               <button
                 type="button"
-                onClick={handleSwap}
-                className="w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors duration-200 cursor-pointer"
+                onClick={() => window.location.href = '/history'}
+                className="flex-1 py-4 bg-surface border border-border text-text rounded-xl font-semibold hover:bg-border/50 transition-colors duration-200 cursor-pointer"
               >
-                <ArrowsUpDownIcon className="w-5 h-5" />
+                {t('exchange.viewHistory')}
+              </button>
+              <button
+                type="button"
+                onClick={handleNewExchange}
+                className="flex-1 py-4 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors duration-200 cursor-pointer"
+              >
+                {t('exchange.newExchange')}
               </button>
             </div>
-
-            {/* To Currency */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-text mb-2">You Receive</label>
-              <div className="flex items-center space-x-4 p-4 bg-primary/5 rounded-xl border border-primary/20">
-                <div className="flex-1">
-                  <p className="text-3xl font-bold text-primary">
-                    {formatCurrency(getConvertedAmount())}
-                  </p>
-                  <p className="text-sm text-text/50 mt-1">
-                    Balance after: {formatCurrency(getAccountBalance(toCurrency) + getConvertedAmount())} {toCurrency}
-                  </p>
-                </div>
-                <select
-                  value={toCurrency}
-                  onChange={(e) => setToCurrency(e.target.value)}
-                  className="flex items-center space-x-2 px-4 py-3 bg-white rounded-xl border border-border cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                  {currencies.filter(c => c !== fromCurrency).map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Exchange Rate Info */}
-            <div className="bg-surface rounded-xl p-4 mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-2">
-                  <ChartBarIcon className="w-5 h-5 text-primary" />
-                  <span className="font-medium text-text">Exchange Rate</span>
-                </div>
-                <span className="text-xs text-text/50">Updated 5 sec ago</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-text">
-                    1 {fromCurrency} = {getRate().toFixed(4)} {toCurrency}
-                  </p>
-                  <p className="text-sm text-green-600">+0.12% from yesterday</p>
-                </div>
-                <button
-                  type="button"
-                  className="p-2 rounded-lg hover:bg-primary/10 transition-colors duration-200 cursor-pointer"
-                >
-                  <ArrowPathIcon className="w-5 h-5 text-primary" />
-                </button>
-              </div>
-            </div>
-
-            {/* Fee Breakdown */}
-            <div className="border-t border-border pt-4 mb-6">
-              <div className="flex justify-between mb-2">
-                <span className="text-text/60">Exchange Amount</span>
-                <span className="text-text">{formatCurrency(parseFloat(amount.replace(/,/g, '')) || 0)} {fromCurrency}</span>
-              </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-text/60">Exchange Fee</span>
-                <span className="text-green-600 font-medium">Free</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-border">
-                <span className="font-semibold text-text">Total</span>
-                <span className="font-bold text-text text-lg">{formatCurrency(parseFloat(amount.replace(/,/g, '')) || 0)} {fromCurrency}</span>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-4 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors duration-200 cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {submitting ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              ) : (
-                <>
-                  <ArrowsUpDownIcon className="w-5 h-5" />
-                  <span>Exchange Now</span>
-                </>
-              )}
-            </button>
-          </form>
+          </div>
         </div>
+      )}
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Live Rates */}
-          <div className="bg-white rounded-2xl shadow-sm border border-border p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-heading font-semibold text-text">Live Rates</h3>
-              <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full flex items-center">
-                <span className="w-1.5 h-1.5 bg-green-600 rounded-full mr-1 animate-pulse"></span>
-                Live
-              </span>
-            </div>
+      {/* Step 1: Exchange Form */}
+      {step === 1 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Exchange Calculator */}
+          <div className="lg:col-span-2">
+            <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-border p-6">
+              {message && (
+                <div className={`mb-6 p-4 rounded-xl ${
+                  message.type === 'success'
+                    ? 'bg-green-50 border border-green-200 text-green-600'
+                    : 'bg-red-50 border border-red-200 text-red-600'
+                }`}>
+                  {message.text}
+                </div>
+              )}
 
-            <div className="space-y-3">
-              {liveRates.map((item) => (
-                <div
-                  key={item.pair}
-                  className="flex items-center justify-between p-3 rounded-xl bg-surface hover:bg-primary/5 transition-colors duration-200 cursor-pointer"
-                >
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm font-medium text-text">{item.pair}</span>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-text">{item.rate}</p>
-                    <p className={`text-xs ${item.positive ? 'text-green-600' : 'text-red-500'}`}>
-                      {item.change}
+              {/* From Currency */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-text mb-2">{t('exchange.youPay')}</label>
+                <div className="flex items-center space-x-4 p-4 bg-surface rounded-xl border border-border">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
+                      className="w-full text-3xl font-bold text-text bg-transparent focus:outline-none"
+                    />
+                    <p className="text-sm text-text/50 mt-1">
+                      {t('exchange.available')}: {formatCurrency(getAccountBalance(fromCurrency))} {fromCurrency}
                     </p>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Recent Exchanges */}
-          <div className="bg-white rounded-2xl shadow-sm border border-border p-6">
-            <h3 className="font-heading font-semibold text-text mb-4">Recent Exchanges</h3>
-            <div className="space-y-3">
-              <div className="p-3 rounded-xl bg-surface">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-text">USD → EUR</span>
-                  <span className="text-xs text-text/50">Jan 3</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-red-500">-$1,000.00</span>
-                  <span className="text-text/30">→</span>
-                  <span className="text-green-600">+€918.50</span>
+                  <select
+                    value={fromCurrency}
+                    onChange={(e) => setFromCurrency(e.target.value)}
+                    className="flex items-center space-x-2 px-4 py-3 bg-white rounded-xl border border-border cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    {currencies.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-surface">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-text">TWD → USD</span>
-                  <span className="text-xs text-text/50">Dec 28</span>
+
+              {/* Swap Button */}
+              <div className="flex justify-center -my-2 relative z-10">
+                <button
+                  type="button"
+                  onClick={handleSwap}
+                  className="w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors duration-200 cursor-pointer"
+                >
+                  <ArrowsUpDownIcon className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* To Currency */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-text mb-2">{t('exchange.youReceive')}</label>
+                <div className="flex items-center space-x-4 p-4 bg-primary/5 rounded-xl border border-primary/20">
+                  <div className="flex-1">
+                    <p className="text-3xl font-bold text-primary">
+                      {formatCurrency(getConvertedAmount())}
+                    </p>
+                    <p className="text-sm text-text/50 mt-1">
+                      {t('exchange.balanceAfter')}: {formatCurrency(getAccountBalance(toCurrency) + getConvertedAmount())} {toCurrency}
+                    </p>
+                  </div>
+                  <select
+                    value={toCurrency}
+                    onChange={(e) => setToCurrency(e.target.value)}
+                    className="flex items-center space-x-2 px-4 py-3 bg-white rounded-xl border border-border cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    {currencies.filter(c => c !== fromCurrency).map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-red-500">-NT$31,000</span>
-                  <span className="text-text/30">→</span>
-                  <span className="text-green-600">+$1,000.00</span>
+              </div>
+
+              {/* Exchange Rate Info */}
+              <div className="bg-surface rounded-xl p-4 mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <ChartBarIcon className="w-5 h-5 text-primary" />
+                    <span className="font-medium text-text">{t('exchange.exchangeRate')}</span>
+                  </div>
+                  <span className="text-xs text-text/50">{t('exchange.updatedSecondsAgo', { seconds: 5 })}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-bold text-text">
+                      1 {fromCurrency} = {getRate().toFixed(4)} {toCurrency}
+                    </p>
+                    <p className="text-sm text-green-600">{t('exchange.fromYesterday', { change: '+0.12%' })}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="p-2 rounded-lg hover:bg-primary/10 transition-colors duration-200 cursor-pointer"
+                  >
+                    <ArrowPathIcon className="w-5 h-5 text-primary" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Fee Breakdown */}
+              <div className="border-t border-border pt-4 mb-6">
+                <div className="flex justify-between mb-2">
+                  <span className="text-text/60">{t('exchange.exchangeAmount')}</span>
+                  <span className="text-text">{formatCurrency(parseFloat(amount.replace(/,/g, '')) || 0)} {fromCurrency}</span>
+                </div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-text/60">{t('exchange.exchangeFee')}</span>
+                  <span className="text-green-600 font-medium">{t('common.free')}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-border">
+                  <span className="font-semibold text-text">{t('exchange.total')}</span>
+                  <span className="font-bold text-text text-lg">{formatCurrency(parseFloat(amount.replace(/,/g, '')) || 0)} {fromCurrency}</span>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-4 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors duration-200 cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                ) : (
+                  <>
+                    <ArrowsUpDownIcon className="w-5 h-5" />
+                    <span>{t('exchange.exchangeNow')}</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Live Rates */}
+            <div className="bg-white rounded-2xl shadow-sm border border-border p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-heading font-semibold text-text">{t('exchange.liveRates')}</h3>
+                <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full flex items-center">
+                  <span className="w-1.5 h-1.5 bg-green-600 rounded-full mr-1 animate-pulse"></span>
+                  {t('exchange.live')}
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {liveRates.map((item) => (
+                  <div
+                    key={item.pair}
+                    className="flex items-center justify-between p-3 rounded-xl bg-surface hover:bg-primary/5 transition-colors duration-200 cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <span className="text-sm font-medium text-text">{item.pair}</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-text">{item.rate}</p>
+                      <p className={`text-xs ${item.positive ? 'text-green-600' : 'text-red-500'}`}>
+                        {item.change}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Recent Exchanges */}
+            <div className="bg-white rounded-2xl shadow-sm border border-border p-6">
+              <h3 className="font-heading font-semibold text-text mb-4">{t('exchange.recentExchanges')}</h3>
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl bg-surface">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-text">USD → EUR</span>
+                    <span className="text-xs text-text/50">Jan 3</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-red-500">-$1,000.00</span>
+                    <span className="text-text/30">→</span>
+                    <span className="text-green-600">+€918.50</span>
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-surface">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-text">TWD → USD</span>
+                    <span className="text-xs text-text/50">Dec 28</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-red-500">-NT$31,000</span>
+                    <span className="text-text/30">→</span>
+                    <span className="text-green-600">+$1,000.00</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

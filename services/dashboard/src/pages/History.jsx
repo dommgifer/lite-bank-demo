@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { accountAPI, transactionAPI } from '../services/api'
 import {
@@ -15,6 +16,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 export default function History() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const [accounts, setAccounts] = useState([])
   const [transactions, setTransactions] = useState([])
@@ -169,38 +171,38 @@ export default function History() {
       {/* Page Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-text mb-2">Transaction History</h1>
-          <p className="text-text/60">View and search all your transactions</p>
+          <h1 className="text-3xl font-heading font-bold text-text mb-2">{t('history.title')}</h1>
+          <p className="text-text/60">{t('history.subtitle')}</p>
         </div>
         <button className="flex items-center space-x-2 px-5 py-3 bg-white border border-border text-text rounded-xl hover:bg-surface transition-colors duration-200 cursor-pointer">
           <ArrowDownTrayIcon className="w-5 h-5" />
-          <span className="font-medium">Export</span>
+          <span className="font-medium">{t('common.export')}</span>
         </button>
       </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-xl p-4 shadow-sm border border-border">
-          <p className="text-text/60 text-sm mb-1">Total Income</p>
+          <p className="text-text/60 text-sm mb-1">{t('history.totalIncome')}</p>
           <p className="text-xl font-heading font-bold text-green-600">+{formatCurrency(stats.income)}</p>
-          <p className="text-xs text-text/50 mt-1">This month</p>
+          <p className="text-xs text-text/50 mt-1">{t('history.thisMonthLabel')}</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border border-border">
-          <p className="text-text/60 text-sm mb-1">Total Expense</p>
+          <p className="text-text/60 text-sm mb-1">{t('history.totalExpense')}</p>
           <p className="text-xl font-heading font-bold text-red-500">-{formatCurrency(stats.expense)}</p>
-          <p className="text-xs text-text/50 mt-1">This month</p>
+          <p className="text-xs text-text/50 mt-1">{t('history.thisMonthLabel')}</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border border-border">
-          <p className="text-text/60 text-sm mb-1">Transactions</p>
+          <p className="text-text/60 text-sm mb-1">{t('history.transactions')}</p>
           <p className="text-xl font-heading font-bold text-text">{stats.count}</p>
-          <p className="text-xs text-text/50 mt-1">This month</p>
+          <p className="text-xs text-text/50 mt-1">{t('history.thisMonthLabel')}</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border border-border">
-          <p className="text-text/60 text-sm mb-1">Net Change</p>
+          <p className="text-text/60 text-sm mb-1">{t('history.netChange')}</p>
           <p className={`text-xl font-heading font-bold ${stats.net >= 0 ? 'text-primary' : 'text-red-500'}`}>
             {stats.net >= 0 ? '+' : ''}{formatCurrency(stats.net)}
           </p>
-          <p className="text-xs text-text/50 mt-1">This month</p>
+          <p className="text-xs text-text/50 mt-1">{t('history.thisMonthLabel')}</p>
         </div>
       </div>
 
@@ -215,7 +217,7 @@ export default function History() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search transactions..."
+                placeholder={t('history.searchTransactions')}
                 className="w-full pl-10 pr-4 py-3 bg-surface border border-border rounded-xl text-text placeholder-text/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-200"
               />
             </div>
@@ -227,11 +229,11 @@ export default function History() {
             onChange={(e) => setTypeFilter(e.target.value)}
             className="px-4 py-3 bg-surface border border-border rounded-xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
-            <option>All Types</option>
-            <option>Transfer</option>
-            <option>Exchange</option>
-            <option>Deposit</option>
-            <option>Withdrawal</option>
+            <option>{t('history.allTypes')}</option>
+            <option>{t('history.types.transfer')}</option>
+            <option>{t('history.types.exchange')}</option>
+            <option>{t('history.types.deposit')}</option>
+            <option>{t('history.types.withdrawal')}</option>
           </select>
 
           {/* Account Filter */}
@@ -240,7 +242,7 @@ export default function History() {
             onChange={(e) => setAccountFilter(e.target.value)}
             className="px-4 py-3 bg-surface border border-border rounded-xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
-            <option>All Accounts</option>
+            <option>{t('history.allAccounts')}</option>
             {accounts.map((acc) => (
               <option key={acc.accountId}>{acc.currency} Account</option>
             ))}
@@ -252,11 +254,11 @@ export default function History() {
             onChange={(e) => setDateFilter(e.target.value)}
             className="px-4 py-3 bg-surface border border-border rounded-xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
-            <option>Last 30 days</option>
-            <option>Last 7 days</option>
-            <option>This month</option>
-            <option>Last month</option>
-            <option>Last 3 months</option>
+            <option>{t('history.last30Days')}</option>
+            <option>{t('history.last7Days')}</option>
+            <option>{t('history.thisMonth')}</option>
+            <option>{t('history.lastMonth')}</option>
+            <option>{t('history.last3Months')}</option>
           </select>
         </div>
 
@@ -288,7 +290,7 @@ export default function History() {
               </span>
             )}
             <button onClick={clearFilters} className="px-3 py-1 text-text/50 text-sm hover:text-primary cursor-pointer">
-              Clear all
+              {t('common.clearAll')}
             </button>
           </div>
         )}
@@ -298,18 +300,18 @@ export default function History() {
       <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
         {/* Table Header */}
         <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 bg-surface border-b border-border text-sm font-medium text-text/60">
-          <div className="col-span-4">Transaction</div>
-          <div className="col-span-2">Type</div>
-          <div className="col-span-2">Account</div>
-          <div className="col-span-2">Date</div>
-          <div className="col-span-2 text-right">Amount</div>
+          <div className="col-span-4">{t('history.transaction')}</div>
+          <div className="col-span-2">{t('history.type')}</div>
+          <div className="col-span-2">{t('history.account')}</div>
+          <div className="col-span-2">{t('history.date')}</div>
+          <div className="col-span-2 text-right">{t('transfer.amount')}</div>
         </div>
 
         {/* Transaction Items */}
         <div className="divide-y divide-border">
           {paginatedTransactions.length === 0 ? (
             <div className="px-6 py-12 text-center text-text/50">
-              No transactions found
+              {t('history.noTransactionsFound')}
             </div>
           ) : (
             paginatedTransactions.map((tx) => {
