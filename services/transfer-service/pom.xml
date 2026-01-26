@@ -59,6 +59,20 @@
             <version>${opentelemetry.version}</version>
         </dependency>
 
+        <!-- OpenTelemetry Logs SDK -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk-logs</artifactId>
+            <version>${opentelemetry.version}</version>
+        </dependency>
+
+        <!-- OpenTelemetry Logback Appender -->
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-logback-appender-1.0</artifactId>
+            <version>2.10.0-alpha</version>
+        </dependency>
+
         <!-- OpenTelemetry Spring Web Instrumentation -->
         <dependency>
             <groupId>io.opentelemetry.instrumentation</groupId>

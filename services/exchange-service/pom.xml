@@ -60,6 +60,12 @@
             <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
             <version>${opentelemetry.version}</version>
         </dependency>
+        <!-- OpenTelemetry Logs SDK -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk-logs</artifactId>
+            <version>${opentelemetry.version}</version>
+        </dependency>
         <dependency>
             <groupId>io.opentelemetry.instrumentation</groupId>
             <artifactId>opentelemetry-logback-appender-1.0</artifactId>
