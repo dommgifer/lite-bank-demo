@@ -21,6 +21,7 @@
     "noData": "沒有資料",
     "success": "成功",
     "error": "錯誤",
+    "done": "完成",
     "free": "免費",
     "active": "啟用中",
     "max": "最大",
@@ -98,7 +99,24 @@
     "foreignAssets": "外幣資產",
     "foreignTotal": "外幣總額（約當台幣）",
     "basedOnRate": "依即時匯率換算",
-    "foreignAccountDetails": "外幣帳戶明細"
+    "foreignAccountDetails": "外幣帳戶明細",
+    "financialHealth": "財務健康指標",
+    "monthlyIncome": "本月收入",
+    "monthlyExpense": "本月支出",
+    "netChange": "淨變動",
+    "savingsRate": "儲蓄率",
+    "savingsRateDesc": "儲蓄率 = (收入 - 支出) / 收入 × 100%",
+    "vsLastMonth": "較上月",
+    "noFinancialData": "尚無財務數據",
+    "startTransacting": "開始進行交易以查看您的財務健康指標",
+    "depositSuccess": "存款成功",
+    "withdrawSuccess": "提款成功",
+    "transactionComplete": "交易完成！",
+    "depositAmount": "存款金額",
+    "withdrawAmount": "提款金額",
+    "account": "帳戶",
+    "newBalance": "新餘額",
+    "time": "時間"
   },
   "accounts": {
     "title": "我的帳戶",
@@ -225,5 +243,43 @@
     "EUR": "歐元",
     "TWD": "新台幣",
     "JPY": "日圓"
+  },
+  "errors": {
+    "transactionFailed": "交易失敗",
+    "cannotComplete": "您的交易無法完成",
+    "failureReason": "失敗原因",
+    "transactionSummary": "交易摘要",
+    "tryAgain": "重新操作",
+    "viewMyAccounts": "查看我的帳戶",
+    "types": {
+      "INSUFFICIENT_BALANCE": {
+        "title": "餘額不足",
+        "description": "請確認您的帳戶餘額或調整金額"
+      },
+      "ACCOUNT_NOT_FOUND": {
+        "title": "帳戶不存在",
+        "description": "找不到指定的帳戶"
+      },
+      "SERVICE_COMMUNICATION_ERROR": {
+        "title": "系統忙碌中",
+        "description": "請稍後再試"
+      },
+      "CURRENCY_MISMATCH": {
+        "title": "幣別不符",
+        "description": "來源與目標帳戶幣別不匹配"
+      },
+      "UNKNOWN": {
+        "title": "交易失敗",
+        "description": "發生未知錯誤，請稍後再試"
+      },
+      "EXCHANGE_ERROR": {
+        "title": "換匯失敗",
+        "description": "餘額不足或匯率已變更，請重試"
+      }
+    },
+    "exchangeFailed": "換匯失敗",
+    "transferFailed": "轉帳失敗",
+    "withdrawFailed": "提款失敗",
+    "depositFailed": "存款失敗"
   }
 }

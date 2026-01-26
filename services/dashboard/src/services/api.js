@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { registerAxiosTracing } from '../tracing/instrumentation/axios'
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -6,6 +7,9 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 })
+
+// 註冊 OpenTelemetry 追蹤攔截器（需在其他攔截器之前）
+registerAxiosTracing(api)
 
 // Request interceptor - add auth token
 api.interceptors.request.use(
@@ -85,6 +89,14 @@ export const exchangeAPI = {
 export const depositWithdrawAPI = {
   deposit: (data) => api.post('/deposits', data),
   withdraw: (data) => api.post('/withdrawals', data),
+}
+
+// Analytics API
+export const analyticsAPI = {
+  getSummary: () => api.get('/analytics/summary'),
+  getIncomeExpense: (months = 6) => api.get('/analytics/income-expense', { params: { months } }),
+  getTrends: (months = 6) => api.get('/analytics/trends', { params: { months } }),
+  getDistribution: () => api.get('/analytics/distribution'),
 }
 
 export default api

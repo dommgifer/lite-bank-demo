@@ -1,6 +1,13 @@
 spring:
   application:
     name: transaction-service
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:litebank}
     username: ${DB_USER:litebank_user}
@@ -40,6 +47,11 @@ logging:
     com.litebank.transactionservice: INFO
     org.springframework.web: INFO
     org.hibernate.SQL: DEBUG
+
+# Kafka Topics
+kafka:
+  topic:
+    transaction-events: transaction-events
 
 # SpringDoc OpenAPI / Swagger UI Configuration
 springdoc:

@@ -23,7 +23,7 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
-*.env
+!.env.example
 
 # Build outputs
 dist/
@@ -44,3 +44,8 @@ htmlcov/
 # Temporary files
 tmp/
 temp/
+
+#skill
+.claude/*
+
+.*-mcp/*

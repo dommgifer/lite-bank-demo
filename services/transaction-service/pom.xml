@@ -72,6 +72,20 @@
             <version>${opentelemetry.version}</version>
         </dependency>
 
+        <!-- OpenTelemetry Logs SDK -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk-logs</artifactId>
+            <version>${opentelemetry.version}</version>
+        </dependency>
+
+        <!-- OpenTelemetry Logback Appender -->
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-logback-appender-1.0</artifactId>
+            <version>2.10.0-alpha</version>
+        </dependency>
+
         <dependency>
             <groupId>io.opentelemetry.semconv</groupId>
             <artifactId>opentelemetry-semconv</artifactId>
@@ -90,6 +104,12 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>2.7.0</version>
+        </dependency>
+
+        <!-- Kafka -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
         </dependency>
 
         <!-- Lombok -->

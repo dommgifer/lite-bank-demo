@@ -4,9 +4,13 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.propagation.ContextPropagators;
+import io.opentelemetry.exporter.otlp.http.logs.OtlpHttpLogRecordExporter;
 import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
+import io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.logs.SdkLoggerProvider;
+import io.opentelemetry.sdk.logs.export.BatchLogRecordProcessor;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
@@ -42,10 +46,24 @@ public class OpenTelemetryConfig {
                 .setResource(resource)
                 .build();
 
-        return OpenTelemetrySdk.builder()
+        OtlpHttpLogRecordExporter logExporter = OtlpHttpLogRecordExporter.builder()
+                .setEndpoint(otlpEndpoint + "/v1/logs")
+                .build();
+
+        SdkLoggerProvider sdkLoggerProvider = SdkLoggerProvider.builder()
+                .addLogRecordProcessor(BatchLogRecordProcessor.builder(logExporter).build())
+                .setResource(resource)
+                .build();
+
+        OpenTelemetrySdk openTelemetrySdk = OpenTelemetrySdk.builder()
                 .setTracerProvider(sdkTracerProvider)
+                .setLoggerProvider(sdkLoggerProvider)
                 .setPropagators(ContextPropagators.create(W3CTraceContextPropagator.getInstance()))
                 .buildAndRegisterGlobal();
+
+        OpenTelemetryAppender.install(openTelemetrySdk);
+
+        return openTelemetrySdk;
     }
 
     @Bean

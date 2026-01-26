@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
-import { accountAPI, transactionAPI, exchangeAPI, depositWithdrawAPI } from '../services/api'
+import { accountAPI, transactionAPI, exchangeAPI, depositWithdrawAPI, analyticsAPI } from '../services/api'
+import { startSpan, endSpan, setSpanAttributes } from '../tracing'
 import {
   ArrowsRightLeftIcon,
   CurrencyDollarIcon,
@@ -10,7 +11,11 @@ import {
   MinusIcon,
   ArrowUpIcon,
   ArrowDownIcon,
-  XMarkIcon
+  XMarkIcon,
+  ChartBarIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline'
 
 export default function Dashboard() {
@@ -19,6 +24,7 @@ export default function Dashboard() {
   const [accounts, setAccounts] = useState([])
   const [transactions, setTransactions] = useState([])
   const [exchangeRates, setExchangeRates] = useState([])
+  const [financialSummary, setFinancialSummary] = useState(null)
   const [loading, setLoading] = useState(true)
 
   // Modal state for deposit/withdraw
@@ -29,7 +35,19 @@ export default function Dashboard() {
   const [description, setDescription] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [modalError, setModalError] = useState('')
-  const [modalSuccess, setModalSuccess] = useState('')
+  const [transactionResult, setTransactionResult] = useState(null) // 儲存成功交易結果
+  const [failedTransaction, setFailedTransaction] = useState(null) // 儲存失敗交易資訊
+
+  // 解析錯誤類型
+  const getErrorType = (error) => {
+    const errorType = error.response?.data?.error?.type
+    if (errorType) return errorType
+    // 從錯誤訊息中推斷類型
+    const message = error.response?.data?.error?.message || error.response?.data?.message || error.message || ''
+    if (message.toLowerCase().includes('insufficient')) return 'INSUFFICIENT_BALANCE'
+    if (message.toLowerCase().includes('not found')) return 'ACCOUNT_NOT_FOUND'
+    return 'UNKNOWN'
+  }
 
   useEffect(() => {
     loadData()
@@ -37,21 +55,20 @@ export default function Dashboard() {
 
   const loadData = async () => {
     try {
-      const [accountsRes, ratesRes] = await Promise.all([
+      const [accountsRes, ratesRes, analyticsRes] = await Promise.all([
         accountAPI.getByUserId(user?.id || 1),
-        exchangeAPI.getRates().catch(() => ({ data: { data: [] } }))
+        exchangeAPI.getRates().catch(() => ({ data: { data: [] } })),
+        analyticsAPI.getSummary().catch(() => ({ data: { data: null } }))
       ])
 
       setAccounts(accountsRes.data.data || [])
       setExchangeRates(ratesRes.data.data || [])
+      setFinancialSummary(analyticsRes.data.data || null)
 
-      // Load transactions for first account (API returns paginated response)
-      if (accountsRes.data.data?.length > 0) {
-        const txRes = await transactionAPI.getByAccountId(accountsRes.data.data[0].id)
-        // Handle paginated response: data.content contains the transactions array
-        const txData = txRes.data.data
-        setTransactions(txData?.content || txData || [])
-      }
+      // Load recent transactions across all accounts
+      const txRes = await transactionAPI.getAll({ size: 5, sort: 'createdAt,desc' }).catch(() => ({ data: { data: { content: [] } } }))
+      const txData = txRes.data.data
+      setTransactions(txData?.content || txData || [])
     } catch (error) {
       console.error('Failed to load data:', error)
     } finally {
@@ -110,25 +127,26 @@ export default function Dashboard() {
   const openModal = (mode) => {
     setModalMode(mode)
     // Convert to string for proper select value matching
-    setSelectedAccountId(accounts[0]?.id ? String(accounts[0].id) : '')
+    setSelectedAccountId(accounts[0]?.accountId ? String(accounts[0].accountId) : '')
     setAmount('')
     setDescription('')
     setModalError('')
-    setModalSuccess('')
+    setTransactionResult(null)
+    setFailedTransaction(null)
     setShowModal(true)
   }
 
   const closeModal = () => {
     setShowModal(false)
     setModalError('')
-    setModalSuccess('')
+    setTransactionResult(null)
+    setFailedTransaction(null)
   }
 
   const handleModalSubmit = async (e) => {
     e.preventDefault()
     setIsSubmitting(true)
     setModalError('')
-    setModalSuccess('')
 
     const selectedAccount = accounts.find(acc => acc.accountId === Number(selectedAccountId))
     if (!selectedAccount) {
@@ -144,6 +162,15 @@ export default function Dashboard() {
       return
     }
 
+    // 建立追蹤 span
+    const spanName = modalMode === 'deposit' ? 'deposit.flow' : 'withdrawal.flow'
+    const span = startSpan(spanName)
+    setSpanAttributes(span, {
+      [`${modalMode}.account_id`]: Number(selectedAccountId),
+      [`${modalMode}.amount`]: numAmount,
+      [`${modalMode}.currency`]: selectedAccount.currency,
+    })
+
     try {
       const data = {
         accountId: Number(selectedAccountId),
@@ -152,21 +179,45 @@ export default function Dashboard() {
         description: description || (modalMode === 'deposit' ? 'Deposit' : 'Withdrawal')
       }
 
+      let response
       if (modalMode === 'deposit') {
-        await depositWithdrawAPI.deposit(data)
-        setModalSuccess(`Successfully deposited ${formatCurrency(numAmount, selectedAccount.currency)}`)
+        response = await depositWithdrawAPI.deposit(data)
       } else {
-        await depositWithdrawAPI.withdraw(data)
-        setModalSuccess(`Successfully withdrew ${formatCurrency(numAmount, selectedAccount.currency)}`)
+        response = await depositWithdrawAPI.withdraw(data)
       }
 
-      // Reload data after successful transaction
-      setTimeout(() => {
-        loadData()
-        closeModal()
-      }, 1500)
+      // 取得新餘額（從 response 或重新載入帳戶）
+      const updatedAccounts = await accountAPI.getByUserId(user?.id || 1)
+      const updatedAccount = updatedAccounts.data.data?.find(acc => acc.accountId === Number(selectedAccountId))
+
+      // 儲存交易結果
+      setTransactionResult({
+        amount: numAmount,
+        currency: selectedAccount.currency,
+        accountName: `${selectedAccount.currency} ${t('dashboard.account')}`,
+        newBalance: updatedAccount?.balance || selectedAccount.balance,
+        timestamp: new Date()
+      })
+
+      // 更新帳戶資料
+      setAccounts(updatedAccounts.data.data || [])
+      loadData()
+
+      // 追蹤成功
+      endSpan(span, 'OK')
     } catch (error) {
-      setModalError(error.response?.data?.message || `Failed to ${modalMode}. Please try again.`)
+      // 追蹤失敗
+      const errorType = getErrorType(error)
+      endSpan(span, 'ERROR', error.response?.data?.message || error.message)
+
+      // 設定失敗交易資訊
+      setFailedTransaction({
+        errorType,
+        amount: numAmount,
+        currency: selectedAccount.currency,
+        accountName: `${selectedAccount.currency} ${t('dashboard.account')}`,
+        timestamp: new Date()
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -259,28 +310,62 @@ export default function Dashboard() {
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart Section */}
+        {/* Recent Transactions Section */}
         <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-border">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-heading font-semibold text-text">{t('dashboard.balanceTrend')}</h2>
-            <div className="flex space-x-2">
-              <button className="px-3 py-1 text-sm bg-primary/10 text-primary rounded-lg cursor-pointer">{t('dashboard.week')}</button>
-              <button className="px-3 py-1 text-sm text-text/60 hover:bg-primary/5 rounded-lg cursor-pointer">{t('dashboard.month')}</button>
-              <button className="px-3 py-1 text-sm text-text/60 hover:bg-primary/5 rounded-lg cursor-pointer">{t('dashboard.year')}</button>
-            </div>
+            <h2 className="text-lg font-heading font-semibold text-text">{t('dashboard.recentTransactions')}</h2>
+            <Link to="/history" className="text-sm text-primary hover:text-primary/80 cursor-pointer">
+              {t('common.viewAll')}
+            </Link>
           </div>
-          {/* Chart Placeholder */}
-          <div className="h-64 bg-gradient-to-b from-primary/5 to-transparent rounded-xl flex items-end justify-around px-4 pb-4">
-            <div className="w-8 bg-primary/20 rounded-t-lg" style={{ height: '40%' }}></div>
-            <div className="w-8 bg-primary/30 rounded-t-lg" style={{ height: '55%' }}></div>
-            <div className="w-8 bg-primary/40 rounded-t-lg" style={{ height: '45%' }}></div>
-            <div className="w-8 bg-primary/50 rounded-t-lg" style={{ height: '70%' }}></div>
-            <div className="w-8 bg-primary/60 rounded-t-lg" style={{ height: '60%' }}></div>
-            <div className="w-8 bg-primary/70 rounded-t-lg" style={{ height: '85%' }}></div>
-            <div className="w-8 bg-primary rounded-t-lg" style={{ height: '75%' }}></div>
-          </div>
-          <div className="flex justify-around mt-2 text-xs text-text/40">
-            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          {/* Transactions List */}
+          <div className="space-y-3">
+            {transactions.length > 0 ? (
+              transactions
+                .filter(tx => !tx.transactionType.startsWith('EXCHANGE'))
+                .slice(0, 5)
+                .map((tx) => {
+                const isIncome = tx.transactionType === 'CREDIT' || tx.transactionType === 'DEPOSIT'
+                const typeConfig = {
+                  CREDIT: { icon: ArrowDownIcon, label: t('history.types.deposit'), color: 'text-green-600', bg: 'bg-green-100' },
+                  DEBIT: { icon: ArrowUpIcon, label: t('history.types.withdrawal'), color: 'text-red-500', bg: 'bg-red-100' },
+                  DEPOSIT: { icon: ArrowDownIcon, label: t('history.types.deposit'), color: 'text-green-600', bg: 'bg-green-100' },
+                  WITHDRAWAL: { icon: ArrowUpIcon, label: t('history.types.withdrawal'), color: 'text-red-500', bg: 'bg-red-100' },
+                  TRANSFER_IN: { icon: ArrowDownIcon, label: t('history.types.transfer'), color: 'text-green-600', bg: 'bg-green-100' },
+                  TRANSFER_OUT: { icon: ArrowUpIcon, label: t('history.types.transfer'), color: 'text-red-500', bg: 'bg-red-100' },
+                  EXCHANGE_IN: { icon: ArrowsRightLeftIcon, label: t('history.types.exchange'), color: 'text-blue-600', bg: 'bg-blue-100' },
+                  EXCHANGE_OUT: { icon: ArrowsRightLeftIcon, label: t('history.types.exchange'), color: 'text-blue-600', bg: 'bg-blue-100' },
+                }
+                const config = typeConfig[tx.transactionType] || typeConfig.DEBIT
+                const IconComponent = config.icon
+                return (
+                  <div key={tx.transactionId} className="flex items-center justify-between p-3 rounded-xl hover:bg-surface transition-colors">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-10 h-10 ${config.bg} rounded-full flex items-center justify-center`}>
+                        <IconComponent className={`w-5 h-5 ${config.color}`} />
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <p className="font-medium text-text">{config.label}</p>
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-text/10 text-text/60 font-medium">{tx.currency}</span>
+                        </div>
+                        <p className="text-xs text-text/50">
+                          {new Date(tx.createdAt).toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                    <p className={`font-heading font-semibold ${isIncome ? 'text-green-600' : 'text-red-500'}`}>
+                      {isIncome ? '+' : '-'}{formatCurrency(Math.abs(tx.amount), tx.currency)}
+                    </p>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="text-center py-8">
+                <ArrowsRightLeftIcon className="w-12 h-12 text-text/20 mx-auto mb-3" />
+                <p className="text-text/50">{t('dashboard.noTransactions')}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -320,67 +405,109 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Recent Transactions */}
+      {/* Financial Health Indicators */}
       <div className="mt-6 bg-white rounded-2xl p-6 shadow-sm border border-border">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-heading font-semibold text-text">{t('dashboard.recentTransactions')}</h2>
+          <div className="flex items-center space-x-2">
+            <ChartBarIcon className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-heading font-semibold text-text">{t('dashboard.financialHealth')}</h2>
+          </div>
           <Link to="/history" className="text-sm text-primary hover:text-primary/80 cursor-pointer">
             {t('common.viewAll')}
           </Link>
         </div>
-        <div className="space-y-4">
-          {transactions.length === 0 ? (
-            <p className="text-center text-text/50 py-8">{t('dashboard.noTransactions')}</p>
-          ) : (
-            transactions.slice(0, 4).map((tx) => (
-              <div
-                key={tx.id}
-                className="flex items-center justify-between p-4 rounded-xl hover:bg-surface transition-colors duration-200 cursor-pointer"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${tx.transactionType === 'WITHDRAWAL'
-                    ? 'bg-red-100'
-                    : tx.transactionType === 'DEPOSIT'
-                      ? 'bg-green-100'
-                      : tx.transactionType === 'EXCHANGE'
-                        ? 'bg-purple-100'
-                        : tx.amount > 0
-                          ? 'bg-green-100'
-                          : 'bg-red-100'
-                    }`}>
-                    {tx.transactionType === 'WITHDRAWAL' ? (
-                      <ArrowDownIcon className="w-6 h-6 text-red-500" />
-                    ) : tx.transactionType === 'DEPOSIT' ? (
-                      <ArrowUpIcon className="w-6 h-6 text-green-600" />
-                    ) : tx.transactionType === 'EXCHANGE' ? (
-                      <ArrowsRightLeftIcon className="w-6 h-6 text-purple-600" />
-                    ) : tx.amount > 0 ? (
-                      <ArrowUpIcon className="w-6 h-6 text-green-600" />
-                    ) : (
-                      <ArrowDownIcon className="w-6 h-6 text-red-500" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-text">{tx.description || tx.transactionType || tx.type}</p>
-                    <p className="text-sm text-text/50">
-                      {new Date(tx.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
+
+        {financialSummary ? (
+          <div className="space-y-6">
+            {/* Income & Expense Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Monthly Income */}
+              <div className="p-4 rounded-xl bg-green-50 border border-green-100">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-green-700">{t('dashboard.monthlyIncome')}</span>
+                  <ArrowUpIcon className="w-4 h-4 text-green-600" />
                 </div>
-                <span className={`font-semibold ${tx.transactionType === 'WITHDRAWAL'
-                  ? 'text-red-500'
-                  : tx.transactionType === 'DEPOSIT'
-                    ? 'text-green-600'
-                    : tx.amount > 0
-                      ? 'text-green-600'
-                      : 'text-red-500'
-                  }`}>
-                  {tx.transactionType === 'WITHDRAWAL' ? '-' : tx.transactionType === 'DEPOSIT' ? '+' : tx.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(tx.amount), tx.currency)}
-                </span>
+                <p className="text-2xl font-heading font-bold text-green-700">
+                  {formatCurrency(financialSummary.currentMonth?.totalIncomeInTwd || 0, 'TWD')}
+                </p>
+                {financialSummary.comparison?.incomeChangePercent !== undefined && (
+                  <div className={`flex items-center mt-1 text-xs ${financialSummary.comparison.incomeChangePercent >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                    {financialSummary.comparison.incomeChangePercent >= 0 ? (
+                      <ArrowTrendingUpIcon className="w-3 h-3 mr-1" />
+                    ) : (
+                      <ArrowTrendingDownIcon className="w-3 h-3 mr-1" />
+                    )}
+                    <span>{financialSummary.comparison.incomeChangePercent >= 0 ? '+' : ''}{financialSummary.comparison.incomeChangePercent}% {t('dashboard.vsLastMonth')}</span>
+                  </div>
+                )}
               </div>
-            ))
-          )}
-        </div>
+
+              {/* Monthly Expense */}
+              <div className="p-4 rounded-xl bg-red-50 border border-red-100">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-red-700">{t('dashboard.monthlyExpense')}</span>
+                  <ArrowDownIcon className="w-4 h-4 text-red-600" />
+                </div>
+                <p className="text-2xl font-heading font-bold text-red-700">
+                  {formatCurrency(financialSummary.currentMonth?.totalExpenseInTwd || 0, 'TWD')}
+                </p>
+                {financialSummary.comparison?.expenseChangePercent !== undefined && (
+                  <div className={`flex items-center mt-1 text-xs ${financialSummary.comparison.expenseChangePercent <= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                    {financialSummary.comparison.expenseChangePercent <= 0 ? (
+                      <ArrowTrendingDownIcon className="w-3 h-3 mr-1" />
+                    ) : (
+                      <ArrowTrendingUpIcon className="w-3 h-3 mr-1" />
+                    )}
+                    <span>{financialSummary.comparison.expenseChangePercent >= 0 ? '+' : ''}{financialSummary.comparison.expenseChangePercent}% {t('dashboard.vsLastMonth')}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Net Change */}
+              <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-primary">{t('dashboard.netChange')}</span>
+                  <ArrowsRightLeftIcon className="w-4 h-4 text-primary" />
+                </div>
+                <p className={`text-2xl font-heading font-bold ${(financialSummary.currentMonth?.netChangeInTwd || 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                  {(financialSummary.currentMonth?.netChangeInTwd || 0) >= 0 ? '+' : ''}
+                  {formatCurrency(financialSummary.currentMonth?.netChangeInTwd || 0, 'TWD')}
+                </p>
+              </div>
+            </div>
+
+            {/* Savings Rate */}
+            <div className="p-4 rounded-xl bg-surface">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-text">{t('dashboard.savingsRate')}</span>
+                <div className="flex items-center space-x-2">
+                  <span className="text-2xl font-heading font-bold text-primary">
+                    {financialSummary.currentMonth?.overallSavingsRate?.toFixed(1) || 0}%
+                  </span>
+                  {financialSummary.comparison?.savingsRateChange !== undefined && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${financialSummary.comparison.savingsRateChange >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {financialSummary.comparison.savingsRateChange >= 0 ? '+' : ''}{financialSummary.comparison.savingsRateChange}%
+                    </span>
+                  )}
+                </div>
+              </div>
+              {/* Progress Bar */}
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className="bg-primary h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(Math.max(financialSummary.currentMonth?.overallSavingsRate || 0, 0), 100)}%` }}
+                ></div>
+              </div>
+              <p className="text-xs text-text/50 mt-2">{t('dashboard.savingsRateDesc')}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <ChartBarIcon className="w-12 h-12 text-text/20 mx-auto mb-3" />
+            <p className="text-text/50">{t('dashboard.noFinancialData')}</p>
+            <p className="text-xs text-text/40 mt-1">{t('dashboard.startTransacting')}</p>
+          </div>
+        )}
       </div>
 
       {/* Exchange Rates Widget */}
@@ -411,109 +538,243 @@ export default function Dashboard() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-heading font-semibold text-text">
-                {modalMode === 'deposit' ? t('dashboard.depositFunds') : t('dashboard.withdrawFunds')}
-              </h2>
-              <button
-                onClick={closeModal}
-                className="p-2 hover:bg-surface rounded-lg transition-colors"
-              >
-                <XMarkIcon className="w-5 h-5 text-text/60" />
-              </button>
-            </div>
-
-            <form onSubmit={handleModalSubmit} className="space-y-4">
-              {/* Account Selection */}
-              <div>
-                <label className="block text-sm font-medium text-text/70 mb-2">
-                  {t('dashboard.selectAccount')}
-                </label>
-                <select
-                  value={selectedAccountId}
-                  onChange={(e) => setSelectedAccountId(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                >
-                  {accounts.length === 0 ? (
-                    <option value="">{t('dashboard.noAccountsAvailable')}</option>
-                  ) : (
-                    accounts.map((acc) => (
-                      <option key={acc.accountId} value={String(acc.accountId)}>
-                        {acc.currency} Account - {formatCurrency(acc.balance, acc.currency)}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-
-              {/* Amount Input */}
-              <div>
-                <label className="block text-sm font-medium text-text/70 mb-2">
-                  {t('dashboard.amount')}
-                </label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder={t('dashboard.enterAmount')}
-                  min="0.01"
-                  step="0.01"
-                  className="w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                />
-              </div>
-
-              {/* Quick Amount Buttons */}
-              <div className="flex gap-2">
-                {[100, 500, 1000, 5000].map((quickAmount) => (
+            {failedTransaction ? (
+              /* 失敗畫面 */
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-heading font-semibold text-red-700">
+                    {modalMode === 'deposit' ? t('errors.depositFailed') : t('errors.withdrawFailed')}
+                  </h2>
                   <button
-                    key={quickAmount}
-                    type="button"
-                    onClick={() => setAmount(quickAmount.toString())}
-                    className="flex-1 py-2 text-sm border border-border rounded-lg hover:bg-surface transition-colors"
+                    onClick={closeModal}
+                    className="p-2 hover:bg-surface rounded-lg transition-colors"
                   >
-                    ${quickAmount}
+                    <XMarkIcon className="w-5 h-5 text-text/60" />
                   </button>
-                ))}
-              </div>
-
-              {/* Description Input */}
-              <div>
-                <label className="block text-sm font-medium text-text/70 mb-2">
-                  {t('dashboard.descriptionOptional')}
-                </label>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={t('dashboard.addNote')}
-                  className="w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                />
-              </div>
-
-              {/* Error/Success Messages */}
-              {modalError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-                  {modalError}
                 </div>
-              )}
-              {modalSuccess && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-green-600 text-sm">
-                  {modalSuccess}
-                </div>
-              )}
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting || accounts.length === 0}
-                className={`w-full py-3 rounded-xl font-medium transition-colors ${modalMode === 'deposit'
-                  ? 'bg-green-600 hover:bg-green-700 text-white'
-                  : 'bg-red-500 hover:bg-red-600 text-white'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {isSubmitting ? t('dashboard.processing') : modalMode === 'deposit' ? t('dashboard.deposit') : t('dashboard.withdraw')}
-              </button>
-            </form>
+                <div className="text-center py-4">
+                  <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center bg-red-100">
+                    <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                  <p className="mt-3 text-lg font-medium text-red-700">{t('errors.transactionFailed')}</p>
+                </div>
+
+                {/* Error Reason */}
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                  <h4 className="font-semibold text-red-700 mb-1">{t('errors.failureReason')}</h4>
+                  <p className="text-red-800 font-medium">
+                    {t(`errors.types.${failedTransaction.errorType}.title`)}
+                  </p>
+                  <p className="text-red-600 text-sm mt-1">
+                    {t(`errors.types.${failedTransaction.errorType}.description`)}
+                  </p>
+                </div>
+
+                <div className="bg-surface rounded-xl p-4 space-y-3 mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-text/60">{modalMode === 'deposit' ? t('dashboard.depositAmount') : t('dashboard.withdrawAmount')}</span>
+                    <span className="font-heading font-semibold text-text">
+                      {formatCurrency(failedTransaction.amount, failedTransaction.currency)}
+                    </span>
+                  </div>
+                  <div className="border-t border-border"></div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-text/60">{t('dashboard.account')}</span>
+                    <span className="font-medium text-text">{failedTransaction.accountName}</span>
+                  </div>
+                  <div className="border-t border-border"></div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-text/60">{t('dashboard.time')}</span>
+                    <span className="text-text">
+                      {failedTransaction.timestamp.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setFailedTransaction(null)
+                      setAmount('')
+                    }}
+                    className="flex-1 py-3 rounded-xl font-medium transition-colors border border-red-300 text-red-600 hover:bg-red-50"
+                  >
+                    {t('errors.tryAgain')}
+                  </button>
+                  <button
+                    onClick={() => window.location.href = '/accounts'}
+                    className="flex-1 py-3 rounded-xl font-medium transition-colors bg-primary text-white hover:bg-primary/90"
+                  >
+                    {t('errors.viewMyAccounts')}
+                  </button>
+                </div>
+              </>
+            ) : transactionResult ? (
+              /* 成功畫面 */
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-heading font-semibold text-text">
+                    {modalMode === 'deposit' ? t('dashboard.depositSuccess') : t('dashboard.withdrawSuccess')}
+                  </h2>
+                  <button
+                    onClick={closeModal}
+                    className="p-2 hover:bg-surface rounded-lg transition-colors"
+                  >
+                    <XMarkIcon className="w-5 h-5 text-text/60" />
+                  </button>
+                </div>
+
+                <div className="text-center py-4">
+                  <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center ${modalMode === 'deposit' ? 'bg-green-100' : 'bg-red-100'}`}>
+                    <CheckCircleIcon className={`w-10 h-10 ${modalMode === 'deposit' ? 'text-green-600' : 'text-red-500'}`} />
+                  </div>
+                  <p className="mt-3 text-lg font-medium text-text">{t('dashboard.transactionComplete')}</p>
+                </div>
+
+                <div className="bg-surface rounded-xl p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-text/60">{modalMode === 'deposit' ? t('dashboard.depositAmount') : t('dashboard.withdrawAmount')}</span>
+                    <span className={`font-heading font-semibold ${modalMode === 'deposit' ? 'text-green-600' : 'text-red-500'}`}>
+                      {modalMode === 'deposit' ? '+' : '-'}{formatCurrency(transactionResult.amount, transactionResult.currency)}
+                    </span>
+                  </div>
+                  <div className="border-t border-border"></div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-text/60">{t('dashboard.account')}</span>
+                    <span className="font-medium text-text">{transactionResult.accountName}</span>
+                  </div>
+                  <div className="border-t border-border"></div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-text/60">{t('dashboard.newBalance')}</span>
+                    <span className="font-heading font-semibold text-text">
+                      {formatCurrency(transactionResult.newBalance, transactionResult.currency)}
+                    </span>
+                  </div>
+                  <div className="border-t border-border"></div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-text/60">{t('dashboard.time')}</span>
+                    <span className="text-text">
+                      {transactionResult.timestamp.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={closeModal}
+                  className={`w-full mt-6 py-3 rounded-xl font-medium transition-colors ${modalMode === 'deposit'
+                    ? 'bg-green-600 hover:bg-green-700 text-white'
+                    : 'bg-red-500 hover:bg-red-600 text-white'
+                  }`}
+                >
+                  {t('common.done')}
+                </button>
+              </>
+            ) : (
+              /* 輸入表單 */
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-heading font-semibold text-text">
+                    {modalMode === 'deposit' ? t('dashboard.depositFunds') : t('dashboard.withdrawFunds')}
+                  </h2>
+                  <button
+                    onClick={closeModal}
+                    className="p-2 hover:bg-surface rounded-lg transition-colors"
+                  >
+                    <XMarkIcon className="w-5 h-5 text-text/60" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleModalSubmit} className="space-y-4">
+                  {/* Account Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-text/70 mb-2">
+                      {t('dashboard.selectAccount')}
+                    </label>
+                    <select
+                      value={selectedAccountId}
+                      onChange={(e) => setSelectedAccountId(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                    >
+                      {accounts.length === 0 ? (
+                        <option value="">{t('dashboard.noAccountsAvailable')}</option>
+                      ) : (
+                        accounts.map((acc) => (
+                          <option key={acc.accountId} value={String(acc.accountId)}>
+                            {acc.currency} Account - {formatCurrency(acc.balance, acc.currency)}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Amount Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-text/70 mb-2">
+                      {t('dashboard.amount')}
+                    </label>
+                    <input
+                      type="number"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder={t('dashboard.enterAmount')}
+                      min="0.01"
+                      step="0.01"
+                      className="w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                    />
+                  </div>
+
+                  {/* Quick Amount Buttons */}
+                  <div className="flex gap-2">
+                    {[100, 500, 1000, 5000].map((quickAmount) => (
+                      <button
+                        key={quickAmount}
+                        type="button"
+                        onClick={() => setAmount(quickAmount.toString())}
+                        className="flex-1 py-2 text-sm border border-border rounded-lg hover:bg-surface transition-colors"
+                      >
+                        ${quickAmount}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Description Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-text/70 mb-2">
+                      {t('dashboard.descriptionOptional')}
+                    </label>
+                    <input
+                      type="text"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder={t('dashboard.addNote')}
+                      className="w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                    />
+                  </div>
+
+                  {/* Error Message */}
+                  {modalError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                      {modalError}
+                    </div>
+                  )}
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || accounts.length === 0}
+                    className={`w-full py-3 rounded-xl font-medium transition-colors ${modalMode === 'deposit'
+                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'bg-red-500 hover:bg-red-600 text-white'
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {isSubmitting ? t('dashboard.processing') : modalMode === 'deposit' ? t('dashboard.deposit') : t('dashboard.withdraw')}
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}

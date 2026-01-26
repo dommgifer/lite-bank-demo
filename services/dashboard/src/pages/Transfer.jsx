@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { accountAPI, transferAPI, recipientAPI } from '../services/api'
+import { startSpan, endSpan, setSpanAttributes, maskAccount } from '../tracing'
 import { ArrowDownIcon, ArrowRightIcon, UserIcon } from '@heroicons/react/24/outline'
 
 export default function Transfer() {
   const { t } = useTranslation()
   const { user } = useAuth()
-  const [step, setStep] = useState(1) // 1: Details, 2: Confirm, 3: Complete
+  const [step, setStep] = useState(1) // 1: Details, 2: Confirm, 3: Complete, 4: Failed
   const [accounts, setAccounts] = useState([])
   const [recipients, setRecipients] = useState([])
   const [fromAccount, setFromAccount] = useState(null)
@@ -20,6 +21,19 @@ export default function Transfer() {
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState(null)
   const [transferResult, setTransferResult] = useState(null)
+  const [failedTransaction, setFailedTransaction] = useState(null) // 失敗交易資訊
+
+  // 解析錯誤類型
+  const getErrorType = (error) => {
+    const errorType = error.response?.data?.error?.type
+    if (errorType) return errorType
+    // 從錯誤訊息中推斷類型
+    const message = error.response?.data?.error?.message || error.message || ''
+    if (message.toLowerCase().includes('insufficient')) return 'INSUFFICIENT_BALANCE'
+    if (message.toLowerCase().includes('not found')) return 'ACCOUNT_NOT_FOUND'
+    if (message.toLowerCase().includes('mismatch')) return 'CURRENCY_MISMATCH'
+    return 'UNKNOWN'
+  }
 
   useEffect(() => {
     loadAccounts()
@@ -56,12 +70,22 @@ export default function Transfer() {
 
     setLookingUpAccount(true)
     setMessage(null)
+
+    // 建立收件人查詢追蹤 span
+    const span = startSpan('transfer.lookup_recipient')
+    setSpanAttributes(span, {
+      'transfer.recipient_account': maskAccount(accountNumber),
+      'transfer.source_currency': fromAccount?.currency,
+    })
+
     try {
       const res = await accountAPI.getPublicInfo(accountNumber)
       const accountInfo = res.data.data
 
       // 檢查幣別是否匹配
       if (accountInfo.currency !== fromAccount?.currency) {
+        setSpanAttributes(span, { 'error.reason': 'currency_mismatch' })
+        endSpan(span, 'ERROR', 'Currency mismatch')
         setMessage({
           type: 'error',
           text: `Account currency (${accountInfo.currency}) does not match source account (${fromAccount?.currency}). Please use Exchange feature for cross-currency transfers.`
@@ -71,6 +95,11 @@ export default function Transfer() {
       }
 
       // 設定為轉帳目標
+      setSpanAttributes(span, {
+        'transfer.recipient_currency': accountInfo.currency,
+        'transfer.recipient_found': true,
+      })
+      endSpan(span, 'OK')
       setToAccount({
         accountId: accountInfo.accountId,
         accountNumber: accountInfo.accountNumber,
@@ -79,6 +108,11 @@ export default function Transfer() {
         fullName: accountInfo.fullName,
       })
     } catch (error) {
+      setSpanAttributes(span, {
+        'error.type': error.name || 'Error',
+        'error.message': error.response?.data?.error?.message || error.message,
+      })
+      endSpan(span, 'ERROR', error.response?.data?.error?.message || 'Account not found')
       setMessage({
         type: 'error',
         text: error.response?.data?.error?.message || 'Account not found'
@@ -108,6 +142,15 @@ export default function Transfer() {
     const originalAmount = amount
     const originalNote = note
 
+    // 建立轉帳提交追蹤 span
+    const span = startSpan('transfer.submit')
+    setSpanAttributes(span, {
+      'transfer.from_account': maskAccount(fromAccount.accountNumber),
+      'transfer.to_account': maskAccount(toAccount.accountNumber),
+      'transfer.amount': parseFloat(amount.replace(/,/g, '')),
+      'transfer.currency': fromAccount.currency,
+    })
+
     try {
       const response = await transferAPI.create({
         fromAccountId: fromAccount.accountId,
@@ -116,6 +159,13 @@ export default function Transfer() {
         currency: fromAccount.currency,
         description: note || 'Transfer',
       })
+
+      // 記錄成功屬性
+      setSpanAttributes(span, {
+        'transfer.id': response.data.data?.transferId,
+        'transfer.status': response.data.data?.status || 'COMPLETED',
+      })
+      endSpan(span, 'OK')
 
       // 將原始資料附加到 transferResult 中
       setTransferResult({
@@ -129,10 +179,24 @@ export default function Transfer() {
       loadAccounts() // Refresh balances
       window.scrollTo(0, 0)
     } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.error?.message || error.response?.data?.message || 'Transfer failed'
+      const errorType = getErrorType(error)
+      setSpanAttributes(span, {
+        'error.type': errorType,
+        'error.message': error.response?.data?.error?.message || error.message,
       })
+      endSpan(span, 'ERROR', error.response?.data?.error?.message || 'Transfer failed')
+
+      // 設定失敗交易資訊並導向失敗頁面
+      setFailedTransaction({
+        errorType,
+        fromAccount: originalFromAccount,
+        toAccount: originalToAccount,
+        amount: parseFloat(originalAmount.replace(/,/g, '')),
+        note: originalNote,
+        timestamp: new Date(),
+      })
+      setStep(4) // 導向失敗頁面
+      window.scrollTo(0, 0)
     } finally {
       setSubmitting(false)
     }
@@ -146,6 +210,7 @@ export default function Transfer() {
     setNote('')
     setMessage(null)
     setTransferResult(null)
+    setFailedTransaction(null)
     window.scrollTo(0, 0)
   }
 
@@ -205,17 +270,17 @@ export default function Transfer() {
                 }`}>1</div>
                 <span className={`ml-2 ${step >= 1 ? 'font-medium text-text' : 'text-text/50'}`}>{t('transfer.details')}</span>
               </div>
-              <div className={`flex-1 h-0.5 mx-4 ${step >= 2 ? 'bg-primary' : 'bg-border'}`}></div>
+              <div className={`flex-1 h-0.5 mx-4 ${step >= 2 ? (step === 4 ? 'bg-red-500' : 'bg-primary') : 'bg-border'}`}></div>
               <div className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                  step >= 2 ? 'bg-primary text-white' : 'bg-border text-text/50'
+                  step >= 2 ? (step === 4 ? 'bg-red-500 text-white' : 'bg-primary text-white') : 'bg-border text-text/50'
                 }`}>2</div>
                 <span className={`ml-2 ${step >= 2 ? 'font-medium text-text' : 'text-text/50'}`}>{t('transfer.confirm')}</span>
               </div>
-              <div className={`flex-1 h-0.5 mx-4 ${step >= 3 ? 'bg-primary' : 'bg-border'}`}></div>
+              <div className={`flex-1 h-0.5 mx-4 ${step >= 3 ? (step === 4 ? 'bg-red-500' : 'bg-primary') : 'bg-border'}`}></div>
               <div className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                  step >= 3 ? 'bg-primary text-white' : 'bg-border text-text/50'
+                  step === 3 ? 'bg-primary text-white' : step === 4 ? 'bg-red-500 text-white' : 'bg-border text-text/50'
                 }`}>3</div>
                 <span className={`ml-2 ${step >= 3 ? 'font-medium text-text' : 'text-text/50'}`}>{t('transfer.complete')}</span>
               </div>
@@ -552,6 +617,87 @@ export default function Transfer() {
                       className="flex-1 py-4 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors duration-200 cursor-pointer"
                     >
                       New Transfer
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Step 4: Failed */}
+            {step === 4 && failedTransaction && (
+              <>
+                <div className="space-y-6">
+                  {/* Failed Message */}
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+                    <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </div>
+                    <h3 className="text-2xl font-heading font-bold text-red-700 mb-2">{t('errors.transferFailed')}</h3>
+                    <p className="text-red-600">{t('errors.cannotComplete')}</p>
+                  </div>
+
+                  {/* Error Reason */}
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                    <h4 className="font-semibold text-red-700 mb-2">{t('errors.failureReason')}</h4>
+                    <p className="text-lg font-medium text-red-800">
+                      {t(`errors.types.${failedTransaction.errorType}.title`)}
+                    </p>
+                    <p className="text-red-600 text-sm mt-1">
+                      {t(`errors.types.${failedTransaction.errorType}.description`)}
+                    </p>
+                  </div>
+
+                  {/* Transaction Summary */}
+                  <div className="bg-surface rounded-xl p-6 space-y-4">
+                    <h4 className="font-semibold text-text">{t('errors.transactionSummary')}</h4>
+
+                    <div className="flex justify-between items-center py-2 border-b border-border">
+                      <span className="text-text/60">{t('transfer.fromAccount')}</span>
+                      <span className="font-medium font-mono text-text">{failedTransaction.fromAccount?.accountNumber}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center py-2 border-b border-border">
+                      <span className="text-text/60">{t('transfer.toAccount')}</span>
+                      <span className="font-medium font-mono text-text">{failedTransaction.toAccount?.accountNumber}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center py-2 border-b border-border">
+                      <span className="text-text/60">{t('transfer.amount')}</span>
+                      <span className="text-xl font-bold text-text">
+                        {formatCurrency(failedTransaction.amount, failedTransaction.fromAccount?.currency)}
+                      </span>
+                    </div>
+
+                    {failedTransaction.note && (
+                      <div className="flex justify-between items-start py-2 border-b border-border">
+                        <span className="text-text/60">{t('transfer.noteOptional')}</span>
+                        <span className="text-text text-right max-w-xs">{failedTransaction.note}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-text/60">{t('transfer.dateTime')}</span>
+                      <span className="text-text">{failedTransaction.timestamp.toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-4">
+                    <button
+                      type="button"
+                      onClick={handleNewTransfer}
+                      className="flex-1 py-4 bg-surface border border-red-300 text-red-600 rounded-xl font-semibold hover:bg-red-50 transition-colors duration-200 cursor-pointer"
+                    >
+                      {t('errors.tryAgain')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.location.href = '/accounts'}
+                      className="flex-1 py-4 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors duration-200 cursor-pointer"
+                    >
+                      {t('errors.viewMyAccounts')}
                     </button>
                   </div>
                 </div>

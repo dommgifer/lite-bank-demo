@@ -47,10 +47,10 @@ services:
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
@@ -60,6 +60,7 @@ services:
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
     ports:
       - "9092:9092"
+      - "29092:29092"
     volumes:
       - kafka_data:/var/lib/kafka/data
     healthcheck:
@@ -72,7 +73,7 @@ services:
 
   # OpenTelemetry Collector
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.91.0
+    image: otel/opentelemetry-collector-contrib:0.105.0
     container_name: litebank-otel-collector
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
@@ -232,6 +233,7 @@ services:
       DB_NAME: litebank
       DB_USER: litebank_user
       DB_PASSWORD: litebank_pass
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       OTEL_SERVICE_NAME: transaction-service
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       ENVIRONMENT: local
@@ -240,6 +242,8 @@ services:
       - "8082:8082"
     depends_on:
       postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
       otel-collector:
         condition: service_started
@@ -417,6 +421,73 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+    networks:
+      - litebank
+
+  # Analytics Processor Service (Kafka Consumer)
+  analytics-processor-service:
+    build:
+      context: ./services/analytics-processor-service
+      dockerfile: Dockerfile
+    container_name: litebank-analytics-processor-service
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: litebank
+      DB_USER: litebank_user
+      DB_PASSWORD: litebank_pass
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      OTEL_SERVICE_NAME: analytics-processor-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      ENVIRONMENT: local
+      SERVER_PORT: 8087
+    ports:
+      - "8087:8087"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8087/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - litebank
+
+  # Analytics Query Service (REST API)
+  analytics-query-service:
+    build:
+      context: ./services/analytics-query-service
+      dockerfile: Dockerfile
+    container_name: litebank-analytics-query-service
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: litebank
+      DB_USER: litebank_user
+      DB_PASSWORD: litebank_pass
+      OTEL_SERVICE_NAME: analytics-query-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      ENVIRONMENT: local
+      SERVER_PORT: 8088
+    ports:
+      - "8088:8088"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8088/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
     networks:
       - litebank
 

@@ -5,6 +5,11 @@ receivers:
         endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "http://localhost:3001"
+          allowed_headers:
+            - "*"
 
 processors:
   batch:
@@ -35,6 +40,7 @@ processors:
         value: local
         action: upsert
 
+
 exporters:
   # Export traces to Tempo
   otlp/tempo:
@@ -45,6 +51,11 @@ exporters:
   # Export logs to Loki
   loki:
     endpoint: http://loki:3100/loki/api/v1/push
+    default_labels_enabled:
+      exporter: true
+      job: true
+      instance: true
+      level: true
 
   # Export metrics to Prometheus
   prometheus:

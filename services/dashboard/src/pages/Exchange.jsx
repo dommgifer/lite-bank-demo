@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { accountAPI, exchangeAPI } from '../services/api'
+import { startSpan, endSpan, setSpanAttributes } from '../tracing'
 import {
   ArrowsUpDownIcon,
   ArrowPathIcon,
@@ -11,7 +12,7 @@ import {
 export default function Exchange() {
   const { t } = useTranslation()
   const { user } = useAuth()
-  const [step, setStep] = useState(1) // 1: Exchange, 2: Complete
+  const [step, setStep] = useState(1) // 1: Exchange, 2: Complete, 3: Failed
   const [accounts, setAccounts] = useState([])
   const [fromCurrency, setFromCurrency] = useState('USD')
   const [toCurrency, setToCurrency] = useState('EUR')
@@ -20,6 +21,19 @@ export default function Exchange() {
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState(null)
   const [exchangeResult, setExchangeResult] = useState(null)
+  const [failedTransaction, setFailedTransaction] = useState(null) // 失敗交易資訊
+
+  // 解析錯誤類型
+  const getErrorType = (error) => {
+    const errorType = error.response?.data?.error?.type
+    if (errorType) return errorType
+    // 從錯誤訊息中推斷類型
+    const message = error.response?.data?.error?.message || error.message || ''
+    if (message.toLowerCase().includes('insufficient')) return 'INSUFFICIENT_BALANCE'
+    if (message.toLowerCase().includes('not found')) return 'ACCOUNT_NOT_FOUND'
+    if (message.toLowerCase().includes('mismatch')) return 'CURRENCY_MISMATCH'
+    return 'UNKNOWN'
+  }
 
   // Mock exchange rates
   const exchangeRates = {
@@ -93,6 +107,16 @@ export default function Exchange() {
     const originalRate = getRate()
     const originalConvertedAmount = getConvertedAmount()
 
+    // 建立換匯追蹤 span
+    const span = startSpan('exchange.submit')
+    setSpanAttributes(span, {
+      'exchange.from_currency': fromCurrency,
+      'exchange.to_currency': toCurrency,
+      'exchange.amount': originalAmount,
+      'exchange.rate': originalRate,
+      'exchange.converted_amount': originalConvertedAmount,
+    })
+
     try {
       const response = await exchangeAPI.exchange({
         sourceAccountId: sourceAccount.accountId,
@@ -101,6 +125,13 @@ export default function Exchange() {
         destinationCurrency: toCurrency,
         amount: originalAmount,
       })
+
+      // 記錄成功屬性
+      setSpanAttributes(span, {
+        'exchange.id': response.data.data?.exchangeId || response.data.data?.id,
+        'exchange.status': response.data.data?.status || 'COMPLETED',
+      })
+      endSpan(span, 'OK')
 
       // 設定換匯結果
       setExchangeResult({
@@ -117,10 +148,27 @@ export default function Exchange() {
       loadAccounts()
       window.scrollTo(0, 0)
     } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.error?.message || error.response?.data?.message || 'Exchange failed'
+      const errorType = getErrorType(error)
+      setSpanAttributes(span, {
+        'error.type': errorType,
+        'error.message': error.response?.data?.error?.message || error.message,
       })
+      endSpan(span, 'ERROR', error.response?.data?.error?.message || 'Exchange failed')
+
+      // 設定失敗交易資訊並導向失敗頁面
+      setFailedTransaction({
+        errorType,
+        fromCurrency: originalFromCurrency,
+        toCurrency: originalToCurrency,
+        fromAmount: originalAmount,
+        toAmount: originalConvertedAmount,
+        rate: originalRate,
+        sourceAccount: sourceAccount,
+        destinationAccount: destinationAccount,
+        timestamp: new Date(),
+      })
+      setStep(3) // 導向失敗頁面
+      window.scrollTo(0, 0)
     } finally {
       setSubmitting(false)
     }
@@ -131,6 +179,7 @@ export default function Exchange() {
     setAmount('1000')
     setMessage(null)
     setExchangeResult(null)
+    setFailedTransaction(null)
     window.scrollTo(0, 0)
   }
 
@@ -179,6 +228,87 @@ export default function Exchange() {
         <h1 className="text-3xl font-heading font-bold text-text mb-2">{t('exchange.title')}</h1>
         <p className="text-text/60">{t('exchange.subtitle')}</p>
       </div>
+
+      {/* Step 3: Exchange Failed */}
+      {step === 3 && failedTransaction && (
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-sm border border-border p-6">
+            {/* Failed Message */}
+            <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center mb-6">
+              <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-heading font-bold text-red-700 mb-2">{t('errors.exchangeFailed')}</h3>
+              <p className="text-red-600">{t('errors.cannotComplete')}</p>
+            </div>
+
+            {/* Error Reason */}
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+              <h4 className="font-semibold text-red-700 mb-2">{t('errors.failureReason')}</h4>
+              <p className="text-lg font-medium text-red-800">
+                {t(`errors.types.${failedTransaction.errorType}.title`)}
+              </p>
+              <p className="text-red-600 text-sm mt-1">
+                {t(`errors.types.${failedTransaction.errorType}.description`)}
+              </p>
+            </div>
+
+            {/* Transaction Summary */}
+            <div className="bg-surface rounded-xl p-6 space-y-4 mb-6">
+              <h4 className="font-semibold text-text">{t('errors.transactionSummary')}</h4>
+
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-text/60">{t('exchange.fromAccount')}</span>
+                <span className="font-medium font-mono text-text">{failedTransaction.sourceAccount?.accountNumber}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-text/60">{t('exchange.toAccount')}</span>
+                <span className="font-medium font-mono text-text">{failedTransaction.destinationAccount?.accountNumber}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-text/60">{t('exchange.exchangeAmount')}</span>
+                <span className="text-xl font-bold text-text">
+                  {formatCurrency(failedTransaction.fromAmount)} {failedTransaction.fromCurrency}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-text/60">{t('exchange.youReceive')}</span>
+                <span className="font-medium text-text">
+                  {formatCurrency(failedTransaction.toAmount)} {failedTransaction.toCurrency}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span className="text-text/60">{t('exchange.dateTime')}</span>
+                <span className="text-text">{failedTransaction.timestamp.toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={handleNewExchange}
+                className="flex-1 py-4 bg-surface border border-red-300 text-red-600 rounded-xl font-semibold hover:bg-red-50 transition-colors duration-200 cursor-pointer"
+              >
+                {t('errors.tryAgain')}
+              </button>
+              <button
+                type="button"
+                onClick={() => window.location.href = '/accounts'}
+                className="flex-1 py-4 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors duration-200 cursor-pointer"
+              >
+                {t('errors.viewMyAccounts')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Step 2: Exchange Complete */}
       {step === 2 && exchangeResult && (

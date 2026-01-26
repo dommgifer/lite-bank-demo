@@ -11,12 +11,14 @@ datasources:
       httpMethod: GET
       tracesToLogs:
         datasourceUid: 'loki'
-        mappedTags: [{ key: 'service.name', value: 'service_name' }]
-        mapTagNamesEnabled: true
         spanStartTimeShift: '-1h'
         spanEndTimeShift: '1h'
         filterByTraceID: true
         filterBySpanID: false
+        lokiSearch: true
+        # 使用自定義查詢來匹配 Loki 的 job label 格式
+        customQuery: true
+        query: '{job=~".*${__span.tags["service.name"]}.*"} |= "${__span.traceId}"'
       tracesToMetrics:
         datasourceUid: 'prometheus'
       serviceMap:
@@ -34,7 +36,7 @@ datasources:
       maxLines: 1000
       derivedFields:
         - datasourceUid: tempo
-          matcherRegex: "trace_id[=:]([0-9a-fA-F]+)"
+          matcherRegex: '"traceid":"([0-9a-fA-F]+)"'
           name: TraceID
           url: '$${__value.raw}'
 

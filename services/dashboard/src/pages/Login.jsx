@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
+import { startSpan, endSpan, setSpanAttributes } from '../tracing'
 import {
   CurrencyDollarIcon,
   UserIcon,
@@ -33,11 +34,18 @@ export default function Login() {
     setError('')
     setLoading(true)
 
+    // 建立登入追蹤 span
+    const span = startSpan('auth.login')
+    setSpanAttributes(span, { 'user.username': username })
+
     const result = await login(username, password)
 
     if (result.success) {
+      endSpan(span, 'OK')
       navigate('/')
     } else {
+      setSpanAttributes(span, { 'error.reason': result.error })
+      endSpan(span, 'ERROR', result.error)
       setError(result.error)
     }
 

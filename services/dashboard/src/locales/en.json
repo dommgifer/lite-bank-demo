@@ -21,6 +21,7 @@
     "noData": "No data available",
     "success": "Success",
     "error": "Error",
+    "done": "Done",
     "free": "Free",
     "active": "Active",
     "max": "Max",
@@ -98,7 +99,24 @@
     "foreignAssets": "Foreign Assets",
     "foreignTotal": "Foreign Total (in TWD)",
     "basedOnRate": "Based on current exchange rate",
-    "foreignAccountDetails": "Foreign Account Details"
+    "foreignAccountDetails": "Foreign Account Details",
+    "financialHealth": "Financial Health",
+    "monthlyIncome": "Monthly Income",
+    "monthlyExpense": "Monthly Expense",
+    "netChange": "Net Change",
+    "savingsRate": "Savings Rate",
+    "savingsRateDesc": "Savings Rate = (Income - Expense) / Income × 100%",
+    "vsLastMonth": "vs last month",
+    "noFinancialData": "No financial data yet",
+    "startTransacting": "Start transacting to see your financial health indicators",
+    "depositSuccess": "Deposit Successful",
+    "withdrawSuccess": "Withdrawal Successful",
+    "transactionComplete": "Transaction Complete!",
+    "depositAmount": "Deposit Amount",
+    "withdrawAmount": "Withdrawal Amount",
+    "account": "Account",
+    "newBalance": "New Balance",
+    "time": "Time"
   },
   "accounts": {
     "title": "My Accounts",
@@ -225,5 +243,43 @@
     "EUR": "EUR",
     "TWD": "TWD",
     "JPY": "JPY"
+  },
+  "errors": {
+    "transactionFailed": "Transaction Failed",
+    "cannotComplete": "Your transaction could not be completed",
+    "failureReason": "Failure Reason",
+    "transactionSummary": "Transaction Summary",
+    "tryAgain": "Try Again",
+    "viewMyAccounts": "View My Accounts",
+    "types": {
+      "INSUFFICIENT_BALANCE": {
+        "title": "Insufficient Balance",
+        "description": "Please check your account balance or adjust the amount"
+      },
+      "ACCOUNT_NOT_FOUND": {
+        "title": "Account Not Found",
+        "description": "The specified account could not be found"
+      },
+      "SERVICE_COMMUNICATION_ERROR": {
+        "title": "System Busy",
+        "description": "Please try again later"
+      },
+      "CURRENCY_MISMATCH": {
+        "title": "Currency Mismatch",
+        "description": "Source and destination account currencies do not match"
+      },
+      "UNKNOWN": {
+        "title": "Transaction Failed",
+        "description": "An unknown error occurred. Please try again later"
+      },
+      "EXCHANGE_ERROR": {
+        "title": "Exchange Failed",
+        "description": "Insufficient balance or exchange rate has changed. Please try again"
+      }
+    },
+    "exchangeFailed": "Exchange Failed",
+    "transferFailed": "Transfer Failed",
+    "withdrawFailed": "Withdrawal Failed",
+    "depositFailed": "Deposit Failed"
   }
 }

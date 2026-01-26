@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,7 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final Tracer tracer;
+    private final TransactionEventPublisher eventPublisher;
 
     // ==================== 查詢方法 ====================
 
@@ -98,7 +100,8 @@ public class TransactionService {
                 return transactionRepository.findByAccountIdOrderByCreatedAtDesc(params.getAccountId(), pageable);
             } else {
                 span.setAttribute("query.type", "all");
-                return transactionRepository.findAll(pageable);
+                Pageable sortedPageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+                return transactionRepository.findAll(sortedPageable);
             }
         } finally {
             span.end();
@@ -211,6 +214,9 @@ public class TransactionService {
 
             log.info("Credit transaction created: txnId={}", savedTransaction.getTransactionId());
 
+            // Publish event to Kafka
+            eventPublisher.publishTransactionCreated(savedTransaction, account.getUserId());
+
             return savedTransaction;
         } finally {
             span.end();
@@ -280,6 +286,9 @@ public class TransactionService {
             span.setAttribute("transaction.id", savedTransaction.getTransactionId());
 
             log.info("Debit transaction created: txnId={}", savedTransaction.getTransactionId());
+
+            // Publish event to Kafka
+            eventPublisher.publishTransactionCreated(savedTransaction, account.getUserId());
 
             return savedTransaction;
         } finally {
@@ -378,6 +387,10 @@ public class TransactionService {
 
             log.info("Transfer transactions created: outTxn={}, inTxn={}",
                     savedOutTransaction.getTransactionId(), savedInTransaction.getTransactionId());
+
+            // Publish events to Kafka
+            eventPublisher.publishTransactionCreated(savedOutTransaction, sourceAccount.getUserId());
+            eventPublisher.publishTransactionCreated(savedInTransaction, destAccount.getUserId());
 
             return List.of(savedOutTransaction, savedInTransaction);
         } finally {
@@ -480,6 +493,10 @@ public class TransactionService {
 
             log.info("Exchange transactions created: outTxn={}, inTxn={}",
                     savedOutTransaction.getTransactionId(), savedInTransaction.getTransactionId());
+
+            // Publish events to Kafka
+            eventPublisher.publishTransactionCreated(savedOutTransaction, sourceAccount.getUserId());
+            eventPublisher.publishTransactionCreated(savedInTransaction, destAccount.getUserId());
 
             return List.of(savedOutTransaction, savedInTransaction);
         } finally {
