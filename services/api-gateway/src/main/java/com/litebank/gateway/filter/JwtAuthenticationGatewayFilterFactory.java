@@ -39,6 +39,11 @@ public class JwtAuthenticationGatewayFilterFactory
 
             log.info("JWT Filter processing request: {}", path);
 
+            // Debug: 檢查是否收到前端的 traceparent header
+            String traceparent = request.getHeaders().getFirst("traceparent");
+            String tracestate = request.getHeaders().getFirst("tracestate");
+            log.info("=== TRACE CONTEXT DEBUG === traceparent: {}, tracestate: {}", traceparent, tracestate);
+
             // Check if path is excluded
             if (config.getExcludePaths() != null) {
                 for (String excludedPath : config.getExcludePaths().split(",")) {

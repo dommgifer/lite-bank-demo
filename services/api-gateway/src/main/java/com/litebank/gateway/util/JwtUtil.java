@@ -59,6 +59,12 @@ public class JwtUtil {
                     .parseSignedClaims(token)
                     .getPayload();
 
+            // Extract user_id claim (numeric ID)
+            Object userId = claims.get("user_id");
+            if (userId != null) {
+                return String.valueOf(userId);
+            }
+            // Fallback to subject if user_id not found
             return claims.getSubject();
 
         } catch (Exception e) {
