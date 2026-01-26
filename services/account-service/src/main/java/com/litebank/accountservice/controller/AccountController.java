@@ -56,16 +56,21 @@ public class AccountController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<AccountResponse>>> getAccountsByUser(
-            @RequestParam Long userId) {
+            @RequestHeader(value = "X-User-Id", required = false) Long headerUserId,
+            @RequestParam(required = false) Long userId) {
+        Long effectiveUserId = headerUserId != null ? headerUserId : userId;
+        if (effectiveUserId == null) {
+            throw new IllegalArgumentException("User ID is required");
+        }
         Span span = tracer.spanBuilder("GET /api/v1/accounts")
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {
             span.setAttribute("http.method", "GET");
             span.setAttribute("http.route", "/api/v1/accounts");
-            span.setAttribute("user.id", userId);
+            span.setAttribute("user.id", effectiveUserId);
 
-            List<Account> accounts = accountService.getAccountsByUserId(userId);
+            List<Account> accounts = accountService.getAccountsByUserId(effectiveUserId);
             List<AccountResponse> response = accounts.stream()
                     .map(AccountResponse::fromEntity)
                     .collect(Collectors.toList());
