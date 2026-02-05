@@ -1,0 +1,779 @@
+{
+  "uid": "litebank-business-transactions",
+  "title": "Lite Bank - Business Transactions",
+  "description": "Banking business metrics: transfers, deposits, withdrawals, exchanges",
+  "tags": ["litebank", "business", "transactions"],
+  "timezone": "browser",
+  "editable": true,
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 100,
+      "title": "Transfer Operations",
+      "type": "row",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 1,
+      "title": "Transfer Success Rate",
+      "type": "gauge",
+      "gridPos": { "x": 0, "y": 1, "w": 6, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 90 },
+              { "color": "green", "value": 99 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "(sum(rate(litebank_calls_total{service_name=\"transfer-service\", status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"transfer-service\"}[5m]))) * 100",
+          "legendFormat": "Success %"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Transfers/min",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 1, "w": 4, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"transfer-service\"}[1m])) * 60",
+          "legendFormat": "Transfers"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Transfer P95 Latency",
+      "type": "stat",
+      "gridPos": { "x": 10, "y": 1, "w": 4, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 2000 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(litebank_duration_milliseconds_bucket{service_name=\"transfer-service\"}[5m])) by (le))",
+          "legendFormat": "P95"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Failed Transfers (1h)",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 4, "w": 4, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(litebank_calls_total{service_name=\"transfer-service\", status_code=\"STATUS_CODE_ERROR\"}[1h])) or vector(0)",
+          "legendFormat": "Failed"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Total Transfers (1h)",
+      "type": "stat",
+      "gridPos": { "x": 10, "y": 4, "w": 4, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(litebank_calls_total{service_name=\"transfer-service\"}[1h]))",
+          "legendFormat": "Total"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Transfer Rate Over Time",
+      "type": "timeseries",
+      "gridPos": { "x": 14, "y": 1, "w": 10, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20
+          }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"transfer-service\", status_code!=\"STATUS_CODE_ERROR\"}[1m]))",
+          "legendFormat": "Successful"
+        },
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"transfer-service\", status_code=\"STATUS_CODE_ERROR\"}[1m]))",
+          "legendFormat": "Failed"
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "title": "Deposit & Withdrawal Operations",
+      "type": "row",
+      "gridPos": { "x": 0, "y": 7, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 7,
+      "title": "Deposit Success Rate",
+      "type": "gauge",
+      "gridPos": { "x": 0, "y": 8, "w": 6, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 90 },
+              { "color": "green", "value": 99 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "(sum(rate(litebank_calls_total{service_name=\"deposit-withdrawal-service\", http_route=~\".*deposit.*\", status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"deposit-withdrawal-service\", http_route=~\".*deposit.*\"}[5m]))) * 100",
+          "legendFormat": "Success %"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Withdrawal Success Rate",
+      "type": "gauge",
+      "gridPos": { "x": 6, "y": 8, "w": 6, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 90 },
+              { "color": "green", "value": 99 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "(sum(rate(litebank_calls_total{service_name=\"deposit-withdrawal-service\", http_route=~\".*withdraw.*\", status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"deposit-withdrawal-service\", http_route=~\".*withdraw.*\"}[5m]))) * 100",
+          "legendFormat": "Success %"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Deposit/Withdrawal Rate Over Time",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20
+          }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"deposit-withdrawal-service\", http_route=~\".*deposit.*\"}[1m]))",
+          "legendFormat": "Deposits"
+        },
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"deposit-withdrawal-service\", http_route=~\".*withdraw.*\"}[1m]))",
+          "legendFormat": "Withdrawals"
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "title": "Currency Exchange Operations",
+      "type": "row",
+      "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 10,
+      "title": "Exchange Success Rate",
+      "type": "gauge",
+      "gridPos": { "x": 0, "y": 15, "w": 6, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 90 },
+              { "color": "green", "value": 99 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "(sum(rate(litebank_calls_total{service_name=\"exchange-service\", status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"exchange-service\"}[5m]))) * 100",
+          "legendFormat": "Success %"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Exchanges/min",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 15, "w": 4, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "purple", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"exchange-service\"}[1m])) * 60",
+          "legendFormat": "Exchanges"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Exchange Rate Queries/min",
+      "type": "stat",
+      "gridPos": { "x": 10, "y": 15, "w": 4, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "orange", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"exchange-rate-service\"}[1m])) * 60",
+          "legendFormat": "Rate Queries"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Exchange P95 Latency",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 18, "w": 4, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 2000 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(litebank_duration_milliseconds_bucket{service_name=\"exchange-service\"}[5m])) by (le))",
+          "legendFormat": "P95"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Rate Service P95",
+      "type": "stat",
+      "gridPos": { "x": 10, "y": 18, "w": 4, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 200 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(litebank_duration_milliseconds_bucket{service_name=\"exchange-rate-service\"}[5m])) by (le))",
+          "legendFormat": "P95"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Exchange Operations Over Time",
+      "type": "timeseries",
+      "gridPos": { "x": 14, "y": 15, "w": 10, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20
+          }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"exchange-service\"}[1m]))",
+          "legendFormat": "Exchange Requests"
+        },
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"exchange-rate-service\"}[1m]))",
+          "legendFormat": "Rate Queries"
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "title": "Authentication & User Operations",
+      "type": "row",
+      "gridPos": { "x": 0, "y": 21, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 16,
+      "title": "Login Success Rate",
+      "type": "gauge",
+      "gridPos": { "x": 0, "y": 22, "w": 6, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 80 },
+              { "color": "green", "value": 95 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "(sum(rate(litebank_calls_total{service_name=\"user-service\", http_route=~\".*login.*\", status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"user-service\", http_route=~\".*login.*\"}[5m]))) * 100",
+          "legendFormat": "Success %"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Login Attempts/min",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 22, "w": 4, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"user-service\", http_route=~\".*login.*\"}[1m])) * 60",
+          "legendFormat": "Logins"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "title": "Failed Logins (1h)",
+      "type": "stat",
+      "gridPos": { "x": 10, "y": 22, "w": 4, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "red", "value": 50 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(litebank_calls_total{service_name=\"user-service\", http_route=~\".*login.*\", status_code=\"STATUS_CODE_ERROR\"}[1h])) or vector(0)",
+          "legendFormat": "Failed"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "title": "Auth P95 Latency",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 25, "w": 4, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 200 },
+              { "color": "red", "value": 500 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(litebank_duration_milliseconds_bucket{service_name=\"user-service\", http_route=~\".*login.*\"}[5m])) by (le))",
+          "legendFormat": "P95"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "User Service Requests (1h)",
+      "type": "stat",
+      "gridPos": { "x": 10, "y": 25, "w": 4, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(litebank_calls_total{service_name=\"user-service\"}[1h]))",
+          "legendFormat": "Total"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "Authentication Activity Over Time",
+      "type": "timeseries",
+      "gridPos": { "x": 14, "y": 22, "w": 10, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20
+          }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"user-service\", http_route=~\".*login.*\", status_code!=\"STATUS_CODE_ERROR\"}[1m]))",
+          "legendFormat": "Successful Logins"
+        },
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"user-service\", http_route=~\".*login.*\", status_code=\"STATUS_CODE_ERROR\"}[1m]))",
+          "legendFormat": "Failed Logins"
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "title": "Coordination Layer Overview",
+      "type": "row",
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 22,
+      "title": "Coordination Services Request Rate",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 29, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"transfer-service\"}[1m]))",
+          "legendFormat": "transfer-service"
+        },
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"exchange-service\"}[1m]))",
+          "legendFormat": "exchange-service"
+        },
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"deposit-withdrawal-service\"}[1m]))",
+          "legendFormat": "deposit-withdrawal-service"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "title": "Data Layer Services Request Rate",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 29, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"account-service\"}[1m]))",
+          "legendFormat": "account-service"
+        },
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"transaction-service\"}[1m]))",
+          "legendFormat": "transaction-service"
+        },
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"user-service\"}[1m]))",
+          "legendFormat": "user-service"
+        },
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"exchange-rate-service\"}[1m]))",
+          "legendFormat": "exchange-rate-service"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39
+}
