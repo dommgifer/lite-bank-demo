@@ -11,6 +11,24 @@ receivers:
           allowed_headers:
             - "*"
 
+connectors:
+  # Span Metrics Connector - 從 traces 自動生成 metrics
+  # service.name 是預設的 resource attribute，會自動包含
+  spanmetrics:
+    histogram:
+      explicit:
+        buckets: [5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s, 10s]
+    dimensions:
+      - name: http.method
+        default: GET
+      - name: http.status_code
+      - name: http.route
+    exemplars:
+      enabled: true
+    dimensions_cache_size: 1000
+    aggregation_temporality: "AGGREGATION_TEMPORALITY_CUMULATIVE"
+    metrics_flush_interval: 15s
+
 processors:
   batch:
     timeout: 1s
@@ -61,6 +79,9 @@ exporters:
   prometheus:
     endpoint: "0.0.0.0:8889"
     namespace: litebank
+    enable_open_metrics: true
+    resource_to_telemetry_conversion:
+      enabled: true
 
   # Logging for debugging
   logging:
@@ -73,16 +94,23 @@ service:
     traces:
       receivers: [otlp]
       processors: [filter/healthcheck, probabilistic_sampler, batch, resource]
-      exporters: [otlp/tempo, logging]
+      exporters: [otlp/tempo, spanmetrics, logging]
 
     logs:
       receivers: [otlp]
       processors: [batch, resource]
       exporters: [loki, logging]
 
+    # Application metrics (直接從服務發送)
     metrics:
       receivers: [otlp]
       processors: [batch, resource]
+      exporters: [prometheus]
+
+    # Span-derived metrics (從 traces 自動生成，帶有 exemplars)
+    metrics/spanmetrics:
+      receivers: [spanmetrics]
+      processors: [batch]
       exporters: [prometheus]
 
   telemetry:
