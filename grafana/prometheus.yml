@@ -11,28 +11,14 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # OpenTelemetry Collector metrics
+  # OpenTelemetry Collector - internal telemetry
   - job_name: 'otel-collector'
     static_configs:
       - targets: ['otel-collector:8888']
 
-  # Microservices (will be added as services are deployed)
-  # - job_name: 'user-service'
-  #   static_configs:
-  #     - targets: ['user-service:8080']
-  #   metrics_path: '/actuator/prometheus'
-
-  # - job_name: 'account-service'
-  #   static_configs:
-  #     - targets: ['account-service:8081']
-  #   metrics_path: '/actuator/prometheus'
-
-  # - job_name: 'transaction-service'
-  #   static_configs:
-  #     - targets: ['transaction-service:8082']
-  #   metrics_path: '/actuator/prometheus'
-
-  # - job_name: 'transfer-service'
-  #   static_configs:
-  #     - targets: ['transfer-service:8083']
-  #   metrics_path: '/actuator/prometheus'
+  # OpenTelemetry Collector - application metrics (包含 span metrics 和 exemplars)
+  - job_name: 'otel-collector-apps'
+    static_configs:
+      - targets: ['otel-collector:8889']
+    # 啟用 exemplar 支援
+    enable_http2: true

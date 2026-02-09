@@ -9,18 +9,32 @@ datasources:
     uid: tempo
     jsonData:
       httpMethod: GET
-      tracesToLogs:
+      tracesToLogsV2:
         datasourceUid: 'loki'
         spanStartTimeShift: '-1h'
         spanEndTimeShift: '1h'
-        filterByTraceID: true
+        filterByTraceID: false
         filterBySpanID: false
-        lokiSearch: true
-        # 使用自定義查詢來匹配 Loki 的 job label 格式
         customQuery: true
-        query: '{job=~".*${__span.tags["service.name"]}.*"} |= "${__span.traceId}"'
+        query: '{job=~".*$${__span.tags["service.name"]}.*"} |= "$${__span.traceId}"'
       tracesToMetrics:
         datasourceUid: 'prometheus'
+        spanStartTimeShift: '-5m'
+        spanEndTimeShift: '5m'
+        tags:
+          - key: service.name
+            value: service_name
+        queries:
+          - name: 'Request Rate'
+            query: 'sum(rate(litebank_calls_total{service_name="$${__tags.service_name}"}[5m]))'
+          - name: 'Error Rate'
+            query: 'sum(rate(litebank_calls_total{service_name="$${__tags.service_name}", status_code=~"5.."}[5m]))'
+          - name: 'Latency P50'
+            query: 'histogram_quantile(0.5, sum(rate(litebank_duration_milliseconds_bucket{service_name="$${__tags.service_name}"}[5m])) by (le))'
+          - name: 'Latency P95'
+            query: 'histogram_quantile(0.95, sum(rate(litebank_duration_milliseconds_bucket{service_name="$${__tags.service_name}"}[5m])) by (le))'
+          - name: 'Latency P99'
+            query: 'histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="$${__tags.service_name}"}[5m])) by (le))'
       serviceMap:
         datasourceUid: 'prometheus'
       nodeGraph:
@@ -48,6 +62,8 @@ datasources:
     uid: prometheus
     jsonData:
       httpMethod: POST
+      # 啟用 exemplar 支援 - 從 metrics 跳轉到 traces
       exemplarTraceIdDestinations:
         - name: trace_id
           datasourceUid: tempo
+          urlDisplayLabel: 'View Trace'
