@@ -21,9 +21,10 @@ public class TransferService {
 
     private final AccountServiceClient accountServiceClient;
     private final TransactionServiceClient transactionServiceClient;
+    private final NotificationPublisher notificationPublisher;
     private final Tracer tracer;
 
-    public TransferResponse transfer(TransferRequest request, String traceId) {
+    public TransferResponse transfer(TransferRequest request, String traceId, String userId) {
         Span span = tracer.spanBuilder("TransferService.transfer")
                 .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
@@ -109,11 +110,43 @@ public class TransferService {
                     .build();
 
             log.info("Transfer completed successfully: {}", transferId);
+
+            // Publish notification (async, non-blocking)
+            if (userId != null) {
+                try {
+                    notificationPublisher.publishTransferCompleted(
+                            userId,
+                            transferId,
+                            request.getAmount(),
+                            request.getCurrency(),
+                            fromAccount.getAccountNumber(),
+                            toAccount.getAccountNumber()
+                    );
+                } catch (Exception e) {
+                    // Notification failure should not affect transfer result
+                    log.warn("Failed to publish notification for transfer {}: {}", transferId, e.getMessage());
+                }
+            }
+
             return response;
 
         } catch (InsufficientBalanceException | InvalidTransferException e) {
             span.recordException(e);
             log.error("Transfer validation failed: {}", e.getMessage());
+            // Publish failure notification
+            if (userId != null) {
+                try {
+                    notificationPublisher.publishTransferFailed(
+                            userId,
+                            UUID.randomUUID().toString(),
+                            request.getAmount(),
+                            request.getCurrency(),
+                            e.getMessage()
+                    );
+                } catch (Exception ex) {
+                    log.warn("Failed to publish failure notification: {}", ex.getMessage());
+                }
+            }
             throw e;
         } catch (Exception e) {
             span.recordException(e);

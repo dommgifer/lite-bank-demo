@@ -25,6 +25,7 @@ public class TransferController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<TransferResponse>> createTransfer(
+            @RequestHeader(value = "X-User-ID", required = false) String userId,
             @Valid @RequestBody TransferRequest request
     ) {
         Span span = tracer.spanBuilder("POST /api/v1/transfers").startSpan();
@@ -33,8 +34,11 @@ public class TransferController {
             span.setAttribute("from.account.id", request.getFromAccountId());
             span.setAttribute("to.account.id", request.getToAccountId());
             span.setAttribute("amount", request.getAmount().toString());
+            if (userId != null) {
+                span.setAttribute("user.id", userId);
+            }
 
-            TransferResponse response = transferService.transfer(request, traceId);
+            TransferResponse response = transferService.transfer(request, traceId, userId);
 
             return ResponseEntity
                     .status(HttpStatus.CREATED)
