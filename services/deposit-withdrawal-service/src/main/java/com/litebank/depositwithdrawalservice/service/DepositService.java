@@ -27,9 +27,10 @@ public class DepositService {
 
     private final AccountServiceClient accountServiceClient;
     private final TransactionServiceClient transactionServiceClient;
+    private final NotificationPublisher notificationPublisher;
     private final Tracer tracer;
 
-    public DepositResponse executeDeposit(DepositRequest request) {
+    public DepositResponse executeDeposit(DepositRequest request, String userId) {
         Span span = tracer.spanBuilder("DepositService.executeDeposit")
                 .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
@@ -49,6 +50,7 @@ public class DepositService {
             // Step 1: Get account and validate currency
             Map<String, Object> account = accountServiceClient.getAccount(request.getAccountId());
             String accountCurrency = (String) account.get("currency");
+            String accountNumber = (String) account.get("accountNumber");
 
             // Validate currency matches
             if (!accountCurrency.equalsIgnoreCase(request.getCurrency())) {
@@ -81,6 +83,23 @@ public class DepositService {
 
             span.setStatus(StatusCode.OK);
             log.info("Deposit completed successfully: {}", depositId);
+
+            // Publish notification (async, non-blocking)
+            if (userId != null) {
+                try {
+                    notificationPublisher.publishDepositCompleted(
+                            userId,
+                            depositId,
+                            request.getAmount(),
+                            request.getCurrency(),
+                            accountNumber,
+                            txnResponse.getBalanceAfter()
+                    );
+                } catch (Exception e) {
+                    // Notification failure should not affect deposit result
+                    log.warn("Failed to publish notification for deposit {}: {}", depositId, e.getMessage());
+                }
+            }
 
             return DepositResponse.builder()
                     .depositId(depositId)

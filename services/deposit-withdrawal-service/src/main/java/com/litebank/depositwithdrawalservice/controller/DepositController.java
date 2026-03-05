@@ -26,7 +26,9 @@ public class DepositController {
     private final Tracer tracer;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<DepositResponse>> deposit(@Valid @RequestBody DepositRequest request) {
+    public ResponseEntity<ApiResponse<DepositResponse>> deposit(
+            @RequestHeader(value = "X-User-ID", required = false) String userId,
+            @Valid @RequestBody DepositRequest request) {
         Span span = tracer.spanBuilder("POST /api/v1/deposits")
                 .startSpan();
 
@@ -36,8 +38,11 @@ public class DepositController {
             span.setAttribute("account.id", request.getAccountId());
             span.setAttribute("amount", request.getAmount().toString());
             span.setAttribute("currency", request.getCurrency());
+            if (userId != null) {
+                span.setAttribute("user.id", userId);
+            }
 
-            DepositResponse response = depositService.executeDeposit(request);
+            DepositResponse response = depositService.executeDeposit(request, userId);
 
             String traceId = span.getSpanContext().getTraceId();
 

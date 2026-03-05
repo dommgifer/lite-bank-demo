@@ -26,7 +26,9 @@ public class WithdrawalController {
     private final Tracer tracer;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<WithdrawalResponse>> withdraw(@Valid @RequestBody WithdrawalRequest request) {
+    public ResponseEntity<ApiResponse<WithdrawalResponse>> withdraw(
+            @RequestHeader(value = "X-User-ID", required = false) String userId,
+            @Valid @RequestBody WithdrawalRequest request) {
         Span span = tracer.spanBuilder("POST /api/v1/withdrawals")
                 .startSpan();
 
@@ -36,8 +38,11 @@ public class WithdrawalController {
             span.setAttribute("account.id", request.getAccountId());
             span.setAttribute("amount", request.getAmount().toString());
             span.setAttribute("currency", request.getCurrency());
+            if (userId != null) {
+                span.setAttribute("user.id", userId);
+            }
 
-            WithdrawalResponse response = withdrawalService.executeWithdrawal(request);
+            WithdrawalResponse response = withdrawalService.executeWithdrawal(request, userId);
 
             String traceId = span.getSpanContext().getTraceId();
 

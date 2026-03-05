@@ -27,9 +27,10 @@ public class WithdrawalService {
 
     private final AccountServiceClient accountServiceClient;
     private final TransactionServiceClient transactionServiceClient;
+    private final NotificationPublisher notificationPublisher;
     private final Tracer tracer;
 
-    public WithdrawalResponse executeWithdrawal(WithdrawalRequest request) {
+    public WithdrawalResponse executeWithdrawal(WithdrawalRequest request, String userId) {
         Span span = tracer.spanBuilder("WithdrawalService.executeWithdrawal")
                 .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
@@ -49,6 +50,7 @@ public class WithdrawalService {
             // Step 1: Get account and validate currency
             Map<String, Object> account = accountServiceClient.getAccount(request.getAccountId());
             String accountCurrency = (String) account.get("currency");
+            String accountNumber = (String) account.get("accountNumber");
 
             // Validate currency matches
             if (!accountCurrency.equalsIgnoreCase(request.getCurrency())) {
@@ -83,6 +85,23 @@ public class WithdrawalService {
             span.setStatus(StatusCode.OK);
             log.info("Withdrawal completed successfully: {}", withdrawalId);
 
+            // Publish notification (async, non-blocking)
+            if (userId != null) {
+                try {
+                    notificationPublisher.publishWithdrawalCompleted(
+                            userId,
+                            withdrawalId,
+                            request.getAmount(),
+                            request.getCurrency(),
+                            accountNumber,
+                            txnResponse.getBalanceAfter()
+                    );
+                } catch (Exception e) {
+                    // Notification failure should not affect withdrawal result
+                    log.warn("Failed to publish notification for withdrawal {}: {}", withdrawalId, e.getMessage());
+                }
+            }
+
             return WithdrawalResponse.builder()
                     .withdrawalId(withdrawalId)
                     .accountId(txnResponse.getAccountId())
@@ -96,11 +115,44 @@ public class WithdrawalService {
                     .createdAt(txnResponse.getCreatedAt())
                     .build();
 
+        } catch (DepositWithdrawalException e) {
+            span.setStatus(StatusCode.ERROR, e.getMessage());
+            span.recordException(e);
+            log.error("Withdrawal failed: {} - {}", withdrawalId, e.getMessage());
+            // Publish failure notification
+            if (userId != null) {
+                try {
+                    notificationPublisher.publishWithdrawalFailed(
+                            userId,
+                            withdrawalId,
+                            request.getAmount(),
+                            request.getCurrency(),
+                            e.getMessage()
+                    );
+                } catch (Exception ex) {
+                    log.warn("Failed to publish failure notification: {}", ex.getMessage());
+                }
+            }
+            throw e;
         } catch (Exception e) {
             span.setStatus(StatusCode.ERROR, e.getMessage());
             span.recordException(e);
             log.error("Withdrawal failed: {} - {}", withdrawalId, e.getMessage());
-            throw e;
+            // Publish failure notification
+            if (userId != null) {
+                try {
+                    notificationPublisher.publishWithdrawalFailed(
+                            userId,
+                            withdrawalId,
+                            request.getAmount(),
+                            request.getCurrency(),
+                            e.getMessage()
+                    );
+                } catch (Exception ex) {
+                    log.warn("Failed to publish failure notification: {}", ex.getMessage());
+                }
+            }
+            throw new RuntimeException("Withdrawal failed: " + e.getMessage(), e);
         } finally {
             span.end();
         }
