@@ -111,7 +111,7 @@ public class TransferService {
 
             log.info("Transfer completed successfully: {}", transferId);
 
-            // Publish notification (async, non-blocking)
+            // Publish notification to sender (async, non-blocking)
             if (userId != null) {
                 try {
                     notificationPublisher.publishTransferCompleted(
@@ -125,6 +125,23 @@ public class TransferService {
                 } catch (Exception e) {
                     // Notification failure should not affect transfer result
                     log.warn("Failed to publish notification for transfer {}: {}", transferId, e.getMessage());
+                }
+            }
+
+            // Publish notification to receiver (async, non-blocking)
+            if (toAccount.getUserId() != null) {
+                try {
+                    notificationPublisher.publishTransferReceived(
+                            String.valueOf(toAccount.getUserId()),
+                            transferId,
+                            request.getAmount(),
+                            request.getCurrency(),
+                            fromAccount.getAccountNumber(),
+                            toAccount.getAccountNumber()
+                    );
+                } catch (Exception e) {
+                    // Notification failure should not affect transfer result
+                    log.warn("Failed to publish notification to receiver for transfer {}: {}", transferId, e.getMessage());
                 }
             }
 

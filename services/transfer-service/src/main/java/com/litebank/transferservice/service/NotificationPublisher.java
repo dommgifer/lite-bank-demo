@@ -76,6 +76,47 @@ public class NotificationPublisher {
         }
     }
 
+    public void publishTransferReceived(String userId, String transferId,
+                                        BigDecimal amount, String currency,
+                                        String fromAccountNumber, String toAccountNumber) {
+        Span span = tracer.spanBuilder("notification.publish.transfer_received")
+                .startSpan();
+
+        try {
+            Map<String, Object> notification = new HashMap<>();
+            notification.put("notificationId", UUID.randomUUID().toString());
+            notification.put("userId", userId);
+            notification.put("type", "TRANSFER_RECEIVED");
+            notification.put("title", "收到轉帳");
+            notification.put("message", String.format("已收到來自帳戶 %s 的轉帳 %s %s",
+                    fromAccountNumber, amount.toPlainString(), currency));
+            notification.put("timestamp", Instant.now().toString());
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("transferId", transferId);
+            data.put("amount", amount);
+            data.put("currency", currency);
+            data.put("fromAccount", fromAccountNumber);
+            data.put("toAccount", toAccountNumber);
+            notification.put("data", data);
+
+            // Add trace context
+            Map<String, Object> trace = new HashMap<>();
+            trace.put("traceId", Span.current().getSpanContext().getTraceId());
+            trace.put("spanId", Span.current().getSpanContext().getSpanId());
+            notification.put("trace", trace);
+
+            publish(userId, notification);
+            log.info("Published TRANSFER_RECEIVED notification for user: {}", userId);
+
+        } catch (Exception e) {
+            log.error("Failed to publish transfer received notification", e);
+            span.recordException(e);
+        } finally {
+            span.end();
+        }
+    }
+
     public void publishTransferFailed(String userId, String transferId,
                                       BigDecimal amount, String currency,
                                       String reason) {
