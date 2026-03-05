@@ -325,6 +325,7 @@ services:
     environment:
       ACCOUNT_SERVICE_URL: http://account-service:8081
       TRANSACTION_SERVICE_URL: http://transaction-service:8082
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       OTEL_SERVICE_NAME: deposit-withdrawal-service
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       ENVIRONMENT: local
@@ -335,6 +336,8 @@ services:
       account-service:
         condition: service_healthy
       transaction-service:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
       otel-collector:
         condition: service_started
