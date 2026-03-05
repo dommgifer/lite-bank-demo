@@ -1,5 +1,9 @@
 server:
   port: 8080
+  netty:
+    # Disable response timeout for streaming
+    idle-timeout: 0
+    connection-timeout: 0
 
 spring:
   application:
@@ -7,6 +11,13 @@ spring:
 
   cloud:
     gateway:
+      # HTTP Client Configuration for SSE/Streaming support
+      httpclient:
+        response-timeout: 30s  # Default timeout for most routes (30 seconds)
+        pool:
+          type: elastic  # Use elastic pool for long-lived connections
+        wiretap: false
+
       # Global CORS Configuration
       globalcors:
         corsConfigurations:
@@ -110,6 +121,26 @@ spring:
             - Path=/api/v1/analytics/**
           filters:
             - JwtAuthentication
+
+        # Notification Service Routes (container internal port: 8089)
+        # SSE streaming route - needs special handling
+        - id: notification-service
+          uri: http://notification-service:8089
+          predicates:
+            - Path=/api/v1/notifications/**
+          filters:
+            - JwtAuthentication
+            - name: SetResponseHeader
+              args:
+                name: Cache-Control
+                value: no-cache, no-store, must-revalidate
+            - name: SetResponseHeader
+              args:
+                name: X-Accel-Buffering
+                value: "no"
+          metadata:
+            response-timeout: -1
+            connect-timeout: 45000
 
 # JWT Configuration
 jwt:

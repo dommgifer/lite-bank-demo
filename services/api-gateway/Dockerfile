@@ -15,6 +15,9 @@ RUN apt-get update && apt-get install -y maven && \
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
+# Download OpenTelemetry Java Agent
+ADD --chmod=644 https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.10.0/opentelemetry-javaagent.jar /otel/javaagent.jar
+
 # Copy JAR from build stage
 COPY --from=build /app/app.jar .
 

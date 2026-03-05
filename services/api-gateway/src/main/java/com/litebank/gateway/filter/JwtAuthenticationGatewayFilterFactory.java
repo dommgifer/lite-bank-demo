@@ -54,14 +54,25 @@ public class JwtAuthenticationGatewayFilterFactory
                 }
             }
 
-            // Extract JWT token
+            // Extract JWT token from header or query parameter (for SSE)
+            String token = null;
             String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                log.warn("Missing or invalid Authorization header for path: {}", path);
-                return onError(exchange, "Missing or invalid Authorization header", HttpStatus.UNAUTHORIZED);
+
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                token = authHeader.substring(7);
+            } else {
+                // Check query parameter (for SSE connections)
+                String queryToken = request.getQueryParams().getFirst("token");
+                if (queryToken != null && !queryToken.isEmpty()) {
+                    token = queryToken;
+                    log.debug("Using token from query parameter for path: {}", path);
+                }
             }
 
-            String token = authHeader.substring(7);
+            if (token == null) {
+                log.warn("Missing or invalid Authorization for path: {}", path);
+                return onError(exchange, "Missing or invalid Authorization", HttpStatus.UNAUTHORIZED);
+            }
 
             // Validate token
             if (!jwtUtil.validateToken(token)) {
