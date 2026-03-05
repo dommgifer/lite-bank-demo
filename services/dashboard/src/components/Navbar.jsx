@@ -2,10 +2,8 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import LanguageSwitcher from './LanguageSwitcher'
-import {
-  BellIcon,
-  CurrencyDollarIcon
-} from '@heroicons/react/24/outline'
+import NotificationDropdown from './NotificationDropdown'
+import { CurrencyDollarIcon } from '@heroicons/react/24/outline'
 
 export default function Navbar() {
   const { t } = useTranslation()
@@ -59,9 +57,7 @@ export default function Navbar() {
           {/* User Profile */}
           <div className="flex items-center space-x-2">
             <LanguageSwitcher />
-            <button className="p-2 rounded-xl hover:bg-primary/5 transition-colors duration-200 cursor-pointer">
-              <BellIcon className="w-6 h-6 text-text/70" />
-            </button>
+            <NotificationDropdown />
             <div
               onClick={handleLogout}
               className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
