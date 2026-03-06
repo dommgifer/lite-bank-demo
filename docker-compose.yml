@@ -360,6 +360,7 @@ services:
       ACCOUNT_SERVICE_URL: http://account-service:8081
       TRANSACTION_SERVICE_URL: http://transaction-service:8082
       EXCHANGE_RATE_SERVICE_URL: http://exchange-rate-service:8084
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       OTEL_SERVICE_NAME: exchange-service
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       ENVIRONMENT: local
@@ -372,6 +373,8 @@ services:
       transaction-service:
         condition: service_healthy
       exchange-rate-service:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
       otel-collector:
         condition: service_started
