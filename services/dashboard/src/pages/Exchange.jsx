@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { accountAPI, exchangeAPI } from '../services/api'
 import { startSpan, endSpan, setSpanAttributes } from '../tracing'
+import { formatCurrency } from '../utils/formatCurrency'
 import {
   ArrowsUpDownIcon,
   ArrowPathIcon,
@@ -193,18 +194,43 @@ export default function Exchange() {
     return icons[currency] || icons.USD
   }
 
-  const formatCurrency = (amount, currency = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount)
-  }
+  // 從用戶帳戶中提取可用幣別
+  const userCurrencies = accounts.map(acc => acc.currency)
 
-  const currencies = ['USD', 'EUR', 'TWD', 'JPY']
   const getAccountBalance = (currency) => {
     const account = accounts.find(a => a.currency === currency)
     return account?.balance || 0
   }
+
+  // 當帳戶載入後，設定有效的預設幣別
+  useEffect(() => {
+    if (accounts.length > 0) {
+      const currencies = accounts.map(acc => acc.currency)
+
+      // 如果當前 fromCurrency 不在用戶帳戶中，改成第一個
+      if (!currencies.includes(fromCurrency)) {
+        setFromCurrency(currencies[0])
+      }
+
+      // 如果當前 toCurrency 不在用戶帳戶中，改成第二個（若有）
+      if (!currencies.includes(toCurrency)) {
+        const available = currencies.filter(c => c !== fromCurrency)
+        if (available.length > 0) {
+          setToCurrency(available[0])
+        }
+      }
+    }
+  }, [accounts])
+
+  // 當 fromCurrency 改變時，確保 toCurrency 不重複
+  useEffect(() => {
+    if (accounts.length > 0 && fromCurrency === toCurrency) {
+      const available = userCurrencies.filter(c => c !== fromCurrency)
+      if (available.length > 0) {
+        setToCurrency(available[0])
+      }
+    }
+  }, [fromCurrency])
 
   const liveRates = [
     { pair: 'USD/EUR', rate: '0.9200', change: '+0.12%', positive: true },
@@ -405,7 +431,34 @@ export default function Exchange() {
       )}
 
       {/* Step 1: Exchange Form */}
-      {step === 1 && (
+      {step === 1 && userCurrencies.length < 2 && (
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-sm border border-border p-6">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-heading font-bold text-amber-700 mb-2">
+                {t('exchange.needMultipleCurrencies')}
+              </h3>
+              <p className="text-amber-600 mb-6">
+                {t('exchange.needMultipleCurrenciesDesc')}
+              </p>
+              <button
+                type="button"
+                onClick={() => window.location.href = '/accounts'}
+                className="px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors duration-200 cursor-pointer"
+              >
+                {t('exchange.goToAccounts')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === 1 && userCurrencies.length >= 2 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Exchange Calculator */}
           <div className="lg:col-span-2">
@@ -440,7 +493,7 @@ export default function Exchange() {
                     onChange={(e) => setFromCurrency(e.target.value)}
                     className="flex items-center space-x-2 px-4 py-3 bg-white rounded-xl border border-border cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
-                    {currencies.map((c) => (
+                    {userCurrencies.map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
@@ -475,7 +528,7 @@ export default function Exchange() {
                     onChange={(e) => setToCurrency(e.target.value)}
                     className="flex items-center space-x-2 px-4 py-3 bg-white rounded-xl border border-border cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
-                    {currencies.filter(c => c !== fromCurrency).map((c) => (
+                    {userCurrencies.filter(c => c !== fromCurrency).map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>

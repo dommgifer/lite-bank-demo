@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { accountAPI, transactionAPI } from '../services/api'
+import { formatCurrency } from '../utils/formatCurrency'
 import {
   MagnifyingGlassIcon,
   ArrowDownTrayIcon,
@@ -92,14 +93,6 @@ export default function History() {
 
     setFilteredTransactions(filtered)
     setCurrentPage(1)
-  }
-
-  const formatCurrency = (amount, currency = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-    }).format(amount)
   }
 
   const getTypeIcon = (type, amount) => {

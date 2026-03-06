@@ -2,11 +2,15 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { accountAPI, transactionAPI } from '../services/api'
+import { formatCurrency } from '../utils/formatCurrency'
 import {
   ChevronDownIcon,
   ArrowUpIcon,
   ArrowDownIcon,
-  ArrowsRightLeftIcon
+  ArrowsRightLeftIcon,
+  PlusIcon,
+  XMarkIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline'
 
 export default function Accounts() {
@@ -18,13 +22,22 @@ export default function Accounts() {
   const [loading, setLoading] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
+  // Create account modal state
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [selectedCurrency, setSelectedCurrency] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
+  const [createResult, setCreateResult] = useState(null) // { success: boolean, account?: object, error?: string }
+
+  // Supported currencies
+  const allCurrencies = ['TWD', 'USD', 'EUR', 'JPY', 'GBP']
+
   useEffect(() => {
     loadAccounts()
   }, [user])
 
   const loadAccounts = async () => {
     try {
-      const res = await accountAPI.getByUserId(user?.id || 1)
+      const res = await accountAPI.getByUserId(user?.userId || 1)
       const accountList = res.data.data || []
       setAccounts(accountList)
 
@@ -64,12 +77,48 @@ export default function Accounts() {
     return icons[currency] || { symbol: currency, bg: 'bg-gray-100', text: 'text-gray-600', name: `${currency} 帳戶` }
   }
 
-  const formatCurrency = (amount, currency = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-    }).format(amount)
+  // Get currencies that user doesn't have yet
+  const existingCurrencies = accounts.map(acc => acc.currency)
+  const availableCurrencies = allCurrencies.filter(c => !existingCurrencies.includes(c))
+
+  // Create account handlers
+  const openCreateModal = () => {
+    setSelectedCurrency(availableCurrencies[0] || '')
+    setCreateResult(null)
+    setShowCreateModal(true)
+  }
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false)
+    setCreateResult(null)
+  }
+
+  const handleCreateAccount = async () => {
+    if (!selectedCurrency) return
+
+    setIsCreating(true)
+    try {
+      const res = await accountAPI.create({
+        userId: user?.userId || 1,
+        currency: selectedCurrency
+      })
+      const newAccount = res.data.data
+      setCreateResult({ success: true, account: newAccount })
+      // Reload accounts list
+      await loadAccounts()
+      // Select the new account
+      if (newAccount) {
+        selectAccount(newAccount)
+      }
+    } catch (error) {
+      console.error('Failed to create account:', error)
+      setCreateResult({
+        success: false,
+        error: error.response?.data?.message || error.message || t('accounts.createError')
+      })
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   if (loading) {
@@ -85,9 +134,20 @@ export default function Accounts() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-heading font-bold text-text mb-2">{t('accounts.title')}</h1>
-        <p className="text-text/60">{t('accounts.subtitle')}</p>
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-text mb-2">{t('accounts.title')}</h1>
+          <p className="text-text/60">{t('accounts.subtitle')}</p>
+        </div>
+        {availableCurrencies.length > 0 && (
+          <button
+            onClick={openCreateModal}
+            className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors cursor-pointer"
+          >
+            <PlusIcon className="w-5 h-5" />
+            <span>{t('accounts.createAccount')}</span>
+          </button>
+        )}
       </div>
 
       {/* Account Selector Dropdown */}
@@ -254,6 +314,163 @@ export default function Accounts() {
       {!selectedAccount && !loading && (
         <div className="bg-white rounded-2xl p-12 text-center border border-border">
           <p className="text-text/50">{t('accounts.noAccountsAvailable')}</p>
+        </div>
+      )}
+
+      {/* Create Account Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl">
+            {createResult?.success ? (
+              /* Success State */
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-heading font-semibold text-text">
+                    {t('accounts.createSuccess')}
+                  </h2>
+                  <button
+                    onClick={closeCreateModal}
+                    className="p-2 hover:bg-surface rounded-lg transition-colors"
+                  >
+                    <XMarkIcon className="w-5 h-5 text-text/60" />
+                  </button>
+                </div>
+
+                <div className="text-center py-4">
+                  <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center bg-green-100">
+                    <CheckCircleIcon className="w-10 h-10 text-green-600" />
+                  </div>
+                  <p className="mt-3 text-lg font-medium text-text">{t('accounts.accountCreated')}</p>
+                </div>
+
+                <div className="bg-surface rounded-xl p-4 space-y-3 mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-text/60">{t('accounts.currency')}</span>
+                    <span className="font-heading font-semibold text-text">
+                      {createResult.account?.currency}
+                    </span>
+                  </div>
+                  <div className="border-t border-border"></div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-text/60">{t('accounts.accountNumber')}</span>
+                    <span className="font-medium text-text">
+                      {createResult.account?.accountNumber}
+                    </span>
+                  </div>
+                  <div className="border-t border-border"></div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-text/60">{t('accounts.initialBalance')}</span>
+                    <span className="font-medium text-text">
+                      {formatCurrency(0, createResult.account?.currency)}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={closeCreateModal}
+                  className="w-full py-3 rounded-xl font-medium transition-colors bg-primary text-white hover:bg-primary/90"
+                >
+                  {t('common.done')}
+                </button>
+              </>
+            ) : createResult?.success === false ? (
+              /* Error State */
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-heading font-semibold text-red-700">
+                    {t('accounts.createFailed')}
+                  </h2>
+                  <button
+                    onClick={closeCreateModal}
+                    className="p-2 hover:bg-surface rounded-lg transition-colors"
+                  >
+                    <XMarkIcon className="w-5 h-5 text-text/60" />
+                  </button>
+                </div>
+
+                <div className="text-center py-4">
+                  <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center bg-red-100">
+                    <XMarkIcon className="w-10 h-10 text-red-500" />
+                  </div>
+                  <p className="mt-3 text-lg font-medium text-red-700">{createResult.error}</p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setCreateResult(null)}
+                    className="flex-1 py-3 rounded-xl font-medium transition-colors border border-primary text-primary hover:bg-primary/5"
+                  >
+                    {t('errors.tryAgain')}
+                  </button>
+                  <button
+                    onClick={closeCreateModal}
+                    className="flex-1 py-3 rounded-xl font-medium transition-colors bg-primary text-white hover:bg-primary/90"
+                  >
+                    {t('common.close')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Form State */
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-heading font-semibold text-text">
+                    {t('accounts.createAccount')}
+                  </h2>
+                  <button
+                    onClick={closeCreateModal}
+                    className="p-2 hover:bg-surface rounded-lg transition-colors"
+                  >
+                    <XMarkIcon className="w-5 h-5 text-text/60" />
+                  </button>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-text/70 mb-2">
+                    {t('accounts.selectCurrency')}
+                  </label>
+                  <div className="space-y-2">
+                    {availableCurrencies.map((currency) => {
+                      const icon = getCurrencyIcon(currency)
+                      const isSelected = selectedCurrency === currency
+                      return (
+                        <button
+                          key={currency}
+                          onClick={() => setSelectedCurrency(currency)}
+                          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-10 h-10 ${icon.bg} rounded-lg flex items-center justify-center`}>
+                              <span className={`font-bold ${icon.text}`}>{icon.symbol}</span>
+                            </div>
+                            <div className="text-left">
+                              <p className="font-medium text-text">{t(`accounts.currencyNames.${currency}`, icon.name)}</p>
+                              <p className="text-sm text-text/50">{currency}</p>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <span className="text-primary font-medium">✓</span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleCreateAccount}
+                  disabled={isCreating || !selectedCurrency}
+                  className="w-full py-3 rounded-xl font-medium transition-colors bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreating ? t('common.processing') : t('accounts.confirmCreate')}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

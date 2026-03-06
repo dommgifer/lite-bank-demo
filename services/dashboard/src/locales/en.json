@@ -129,6 +129,15 @@
     "recentTransactions": "Recent Transactions",
     "noTransactions": "No transactions yet",
     "noAccountsAvailable": "No accounts available",
+    "createAccount": "New Account",
+    "selectCurrency": "Select Currency",
+    "confirmCreate": "Confirm",
+    "createSuccess": "Account Created",
+    "createFailed": "Failed to Create Account",
+    "accountCreated": "Your account has been created",
+    "createError": "An error occurred while creating the account",
+    "currency": "Currency",
+    "initialBalance": "Initial Balance",
     "currencyNames": {
       "TWD": "TWD Account",
       "USD": "USD Account",
@@ -207,7 +216,10 @@
     "youReceived": "You Received",
     "dateTime": "Date & Time",
     "viewHistory": "View History",
-    "newExchange": "New Exchange"
+    "newExchange": "New Exchange",
+    "needMultipleCurrencies": "Need at least two currency accounts to exchange",
+    "needMultipleCurrenciesDesc": "You currently only have one currency account. Please open another currency account first.",
+    "goToAccounts": "Go to Accounts"
   },
   "history": {
     "title": "Transaction History",

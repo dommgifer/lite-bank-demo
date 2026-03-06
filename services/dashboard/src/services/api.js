@@ -49,6 +49,7 @@ export const accountAPI = {
   getByUserId: (userId) => api.get('/accounts', { params: { userId } }),
   getBalance: (accountId) => api.get(`/accounts/${accountId}/balance`),
   getPublicInfo: (accountNumber) => api.get(`/accounts/number/${accountNumber}`),
+  create: (data) => api.post('/accounts', data),
 }
 
 // Recipient API

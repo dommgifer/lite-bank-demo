@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { accountAPI, transactionAPI, exchangeAPI, depositWithdrawAPI, analyticsAPI } from '../services/api'
 import { startSpan, endSpan, setSpanAttributes } from '../tracing'
+import { formatCurrency } from '../utils/formatCurrency'
 import {
   ArrowsRightLeftIcon,
   CurrencyDollarIcon,
@@ -113,14 +114,6 @@ export default function Dashboard() {
       GBP: { symbol: '£', bg: 'bg-blue-100', text: 'text-blue-600' },
     }
     return icons[currency] || icons.USD
-  }
-
-  const formatCurrency = (amount, currency = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-    }).format(amount)
   }
 
   // Modal handlers
@@ -325,7 +318,7 @@ export default function Dashboard() {
                 .filter(tx => !tx.transactionType.startsWith('EXCHANGE'))
                 .slice(0, 5)
                 .map((tx) => {
-                const isIncome = tx.transactionType === 'CREDIT' || tx.transactionType === 'DEPOSIT'
+                const isIncome = tx.transactionType === 'CREDIT' || tx.transactionType === 'DEPOSIT' || tx.transactionType === 'TRANSFER_IN'
                 const typeConfig = {
                   CREDIT: { icon: ArrowDownIcon, label: t('history.types.deposit'), color: 'text-green-600', bg: 'bg-green-100' },
                   DEBIT: { icon: ArrowUpIcon, label: t('history.types.withdrawal'), color: 'text-red-500', bg: 'bg-red-100' },

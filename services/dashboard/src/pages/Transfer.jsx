@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { accountAPI, transferAPI, recipientAPI } from '../services/api'
 import { startSpan, endSpan, setSpanAttributes, maskAccount } from '../tracing'
+import { formatCurrency } from '../utils/formatCurrency'
 import { ArrowDownIcon, ArrowRightIcon, UserIcon } from '@heroicons/react/24/outline'
 
 export default function Transfer() {
@@ -230,14 +231,6 @@ export default function Transfer() {
       JPY: { symbol: '¥', bg: 'bg-red-100', text: 'text-red-600' },
     }
     return icons[currency] || icons.USD
-  }
-
-  const formatCurrency = (amount, currency = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-    }).format(amount)
   }
 
   const quickAmounts = ['100', '500', '1000', '5000']

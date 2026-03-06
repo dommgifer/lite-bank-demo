@@ -129,6 +129,15 @@
     "recentTransactions": "近期交易",
     "noTransactions": "尚無交易紀錄",
     "noAccountsAvailable": "沒有可用帳戶",
+    "createAccount": "開新帳戶",
+    "selectCurrency": "選擇幣別",
+    "confirmCreate": "確認開戶",
+    "createSuccess": "開戶成功",
+    "createFailed": "開戶失敗",
+    "accountCreated": "帳戶已建立",
+    "createError": "開戶時發生錯誤",
+    "currency": "幣別",
+    "initialBalance": "初始餘額",
     "currencyNames": {
       "TWD": "新台幣帳戶",
       "USD": "美元帳戶",
@@ -207,7 +216,10 @@
     "youReceived": "收到金額",
     "dateTime": "日期時間",
     "viewHistory": "查看歷史",
-    "newExchange": "新換匯"
+    "newExchange": "新換匯",
+    "needMultipleCurrencies": "需要至少兩種幣別帳戶才能換匯",
+    "needMultipleCurrenciesDesc": "您目前只有一種幣別的帳戶。請先開設其他幣別帳戶後再進行換匯。",
+    "goToAccounts": "前往帳戶頁面"
   },
   "history": {
     "title": "交易紀錄",
