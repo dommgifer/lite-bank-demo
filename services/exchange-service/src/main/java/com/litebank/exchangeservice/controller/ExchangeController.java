@@ -27,6 +27,7 @@ public class ExchangeController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<ExchangeResponse>> executeExchange(
+            @RequestHeader(value = "X-User-ID", required = false) String userId,
             @Valid @RequestBody ExchangeRequest request) {
 
         Span span = tracer.spanBuilder("POST /api/v1/exchanges")
@@ -38,8 +39,11 @@ public class ExchangeController {
             span.setAttribute("source.account.id", request.getSourceAccountId());
             span.setAttribute("destination.account.id", request.getDestinationAccountId());
             span.setAttribute("amount", request.getAmount().toString());
+            if (userId != null) {
+                span.setAttribute("user.id", userId);
+            }
 
-            ExchangeResponse response = exchangeService.executeExchange(request);
+            ExchangeResponse response = exchangeService.executeExchange(request, userId);
             String traceId = span.getSpanContext().getTraceId();
 
             return ResponseEntity.ok()

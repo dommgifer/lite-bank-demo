@@ -5,6 +5,7 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.propagation.ContextPropagators;
+import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
 import io.opentelemetry.exporter.otlp.http.logs.OtlpHttpLogRecordExporter;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
@@ -72,5 +73,10 @@ public class OpenTelemetryConfig {
     @Bean
     public Tracer tracer(OpenTelemetry openTelemetry) {
         return openTelemetry.getTracer(serviceName, "1.0.0");
+    }
+
+    @Bean
+    public TextMapPropagator textMapPropagator(OpenTelemetry openTelemetry) {
+        return openTelemetry.getPropagators().getTextMapPropagator();
     }
 }

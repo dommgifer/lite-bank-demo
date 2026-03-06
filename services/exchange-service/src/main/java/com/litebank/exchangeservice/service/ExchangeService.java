@@ -30,9 +30,10 @@ public class ExchangeService {
     private final AccountServiceClient accountServiceClient;
     private final ExchangeRateServiceClient exchangeRateServiceClient;
     private final TransactionServiceClient transactionServiceClient;
+    private final NotificationPublisher notificationPublisher;
     private final Tracer tracer;
 
-    public ExchangeResponse executeExchange(ExchangeRequest request) {
+    public ExchangeResponse executeExchange(ExchangeRequest request, String userId) {
         Span span = tracer.spanBuilder("ExchangeService.executeExchange")
                 .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
@@ -118,6 +119,19 @@ public class ExchangeService {
 
             span.setStatus(StatusCode.OK);
             log.info("Exchange completed successfully: {}", exchangeId);
+
+            // Publish notification
+            if (userId != null) {
+                notificationPublisher.publishExchangeCompleted(
+                        userId,
+                        exchangeId,
+                        request.getAmount(),
+                        request.getSourceCurrency(),
+                        destinationAmount,
+                        request.getDestinationCurrency(),
+                        exchangeRate
+                );
+            }
 
             return ExchangeResponse.builder()
                     .exchangeId(exchangeId)
