@@ -25,7 +25,8 @@
     "free": "Free",
     "active": "Active",
     "max": "Max",
-    "status": "Status"
+    "status": "Status",
+    "add": "Add"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -245,10 +246,28 @@
     "showing": "Showing {{start}}-{{end}} of {{total}} transactions",
     "types": {
       "transfer": "Transfer",
+      "transferIn": "Transfer In",
+      "transferOut": "Transfer Out",
       "exchange": "Exchange",
+      "exchangeIn": "Exchange In",
+      "exchangeOut": "Exchange Out",
+      "deposit": "Deposit",
+      "withdrawal": "Withdrawal"
+    },
+    "descriptions": {
+      "transferFromTo": "From {{from}} to {{to}}",
+      "exchangeFromTo": "{{from}} to {{to}}",
       "deposit": "Deposit",
       "withdrawal": "Withdrawal"
     }
+  },
+  "recipients": {
+    "confirmDelete": "Are you sure you want to delete this recipient?",
+    "enterAccountToAdd": "Enter account to add...",
+    "alreadySaved": "This recipient is already saved",
+    "addSuccess": "Recipient added successfully",
+    "saveThisRecipient": "Save this recipient?",
+    "saved": "Recipient saved"
   },
   "currencies": {
     "USD": "USD",

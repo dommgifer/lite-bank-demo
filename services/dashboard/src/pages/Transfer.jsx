@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { accountAPI, transferAPI, recipientAPI } from '../services/api'
 import { startSpan, endSpan, setSpanAttributes, maskAccount } from '../tracing'
 import { formatCurrency } from '../utils/formatCurrency'
-import { ArrowDownIcon, ArrowRightIcon, UserIcon } from '@heroicons/react/24/outline'
+import { ArrowDownIcon, ArrowRightIcon, UserIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline'
 
 export default function Transfer() {
   const { t } = useTranslation()
@@ -23,6 +23,15 @@ export default function Transfer() {
   const [message, setMessage] = useState(null)
   const [transferResult, setTransferResult] = useState(null)
   const [failedTransaction, setFailedTransaction] = useState(null) // 失敗交易資訊
+
+  // 收款人管理相關狀態
+  const [isManaging, setIsManaging] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [recipientToDelete, setRecipientToDelete] = useState(null)
+  const [newRecipientNumber, setNewRecipientNumber] = useState('')
+  const [addingRecipient, setAddingRecipient] = useState(false)
+  const [savingRecipient, setSavingRecipient] = useState(false)
+  const [recipientSaved, setRecipientSaved] = useState(false)
 
   // 解析錯誤類型
   const getErrorType = (error) => {
@@ -63,6 +72,80 @@ export default function Transfer() {
       setRecipients(data)
     } catch (error) {
       console.error('Failed to load recipients:', error)
+    }
+  }
+
+  // 檢查收款人是否已存在
+  const isRecipientSaved = (accountNumber) => {
+    return recipients.some(r => r.accountNumber === accountNumber)
+  }
+
+  // 刪除收款人
+  const handleDeleteRecipient = async () => {
+    if (!recipientToDelete) return
+
+    try {
+      await recipientAPI.delete(recipientToDelete.recipientId, user?.id || 1)
+      await loadRecipients()
+      setShowDeleteConfirm(false)
+      setRecipientToDelete(null)
+    } catch (error) {
+      console.error('Failed to delete recipient:', error)
+    }
+  }
+
+  // 新增收款人（側邊欄）
+  const handleAddRecipient = async () => {
+    if (!newRecipientNumber || newRecipientNumber.length < 10) return
+
+    setAddingRecipient(true)
+    try {
+      // 先查詢帳戶是否存在
+      const res = await accountAPI.getPublicInfo(newRecipientNumber)
+      const accountInfo = res.data.data
+
+      // 檢查是否已存在
+      if (isRecipientSaved(accountInfo.accountNumber)) {
+        setMessage({ type: 'error', text: t('recipients.alreadySaved') })
+        return
+      }
+
+      // 儲存收款人（使用對方姓名當 nickname）
+      await recipientAPI.create({
+        userId: user?.id || 1,
+        accountNumber: accountInfo.accountNumber,
+        nickname: accountInfo.fullName || `${accountInfo.currency} Account`
+      })
+
+      await loadRecipients()
+      setNewRecipientNumber('')
+      setMessage({ type: 'success', text: t('recipients.addSuccess') })
+    } catch (error) {
+      console.error('Failed to add recipient:', error)
+      setMessage({ type: 'error', text: error.response?.data?.error?.message || t('transfer.accountNotFound') })
+    } finally {
+      setAddingRecipient(false)
+    }
+  }
+
+  // 儲存收款人（轉帳成功後）
+  const handleSaveRecipientAfterTransfer = async () => {
+    if (!transferResult?.toAccount) return
+
+    setSavingRecipient(true)
+    try {
+      await recipientAPI.create({
+        userId: user?.id || 1,
+        accountNumber: transferResult.toAccount.accountNumber,
+        nickname: transferResult.toAccount.fullName || `${transferResult.toAccount.currency} Account`
+      })
+
+      await loadRecipients()
+      setRecipientSaved(true)
+    } catch (error) {
+      console.error('Failed to save recipient:', error)
+    } finally {
+      setSavingRecipient(false)
     }
   }
 
@@ -212,6 +295,7 @@ export default function Transfer() {
     setMessage(null)
     setTransferResult(null)
     setFailedTransaction(null)
+    setRecipientSaved(false)
     window.scrollTo(0, 0)
   }
 
@@ -595,6 +679,53 @@ export default function Transfer() {
                     </div>
                   </div>
 
+                  {/* 儲存收款人提示 */}
+                  {transferResult.toAccount && !isRecipientSaved(transferResult.toAccount.accountNumber) && !recipientSaved && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <UserIcon className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-text">{t('recipients.saveThisRecipient')}</p>
+                            <p className="text-sm text-text/60">
+                              {transferResult.toAccount.fullName || transferResult.toAccount.accountNumber}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleSaveRecipientAfterTransfer}
+                            disabled={savingRecipient}
+                            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors duration-200 cursor-pointer disabled:opacity-50"
+                          >
+                            {savingRecipient ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            ) : (
+                              t('common.save')
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 已儲存提示 */}
+                  {recipientSaved && (
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <p className="font-medium text-green-700">{t('recipients.saved')}</p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Action Buttons */}
                   <div className="flex gap-4">
                     <button
@@ -736,14 +867,19 @@ export default function Transfer() {
             </div>
 
             {/* Saved Recipients */}
-            <div className="bg-white rounded-2xl shadow-sm border border-border p-6">
+            <div className={`bg-white rounded-2xl shadow-sm border ${isManaging ? 'border-primary' : 'border-border'} p-6`}>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-heading font-semibold text-text">Saved Recipients</h3>
-                <button className="text-sm text-primary hover:text-primary/80 cursor-pointer">Manage</button>
+                <h3 className="font-heading font-semibold text-text">{t('transfer.savedRecipients')}</h3>
+                <button
+                  onClick={() => setIsManaging(!isManaging)}
+                  className={`text-sm cursor-pointer ${isManaging ? 'text-green-600 font-medium' : 'text-primary hover:text-primary/80'}`}
+                >
+                  {isManaging ? t('common.done') : t('common.manage')}
+                </button>
               </div>
               {fromAccount && (
                 <p className="text-xs text-text/50 mb-3">
-                  Showing {fromAccount.currency} recipients only
+                  {t('transfer.showingCurrencyRecipients', { currency: fromAccount.currency })}
                 </p>
               )}
               <div className="space-y-3">
@@ -752,12 +888,12 @@ export default function Transfer() {
                     r => r.currency === fromAccount?.currency
                   )
 
-                  if (filteredRecipients.length === 0) {
+                  if (filteredRecipients.length === 0 && !isManaging) {
                     return (
                       <p className="text-sm text-text/50 text-center py-4">
                         {fromAccount
-                          ? `No ${fromAccount.currency} recipients saved yet`
-                          : 'No saved recipients yet'}
+                          ? t('transfer.noRecipientsYet', { currency: fromAccount.currency })
+                          : t('transfer.noSavedRecipients')}
                       </p>
                     )
                   }
@@ -767,11 +903,15 @@ export default function Transfer() {
                     return (
                       <div
                         key={recipient.recipientId}
-                        className="flex items-center space-x-3 p-3 rounded-xl hover:bg-surface transition-colors duration-200 cursor-pointer"
+                        className={`flex items-center space-x-3 p-3 rounded-xl transition-colors duration-200 ${
+                          isManaging ? 'bg-surface' : 'hover:bg-surface cursor-pointer'
+                        }`}
                         onClick={() => {
-                          // 設定帳號並自動查詢
-                          setToAccountNumber(recipient.accountNumber)
-                          lookupAccount(recipient.accountNumber)
+                          if (!isManaging) {
+                            // 設定帳號並自動查詢
+                            setToAccountNumber(recipient.accountNumber)
+                            lookupAccount(recipient.accountNumber)
+                          }
                         }}
                       >
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${icon.bg}`}>
@@ -783,12 +923,82 @@ export default function Transfer() {
                           <p className="font-medium text-text">{recipient.nickname || `${recipient.currency} Account`}</p>
                           <p className="text-xs text-text/50">**** {recipient.accountNumber?.slice(-4) || '0000'}</p>
                         </div>
+                        {isManaging && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setRecipientToDelete(recipient)
+                              setShowDeleteConfirm(true)
+                            }}
+                            className="w-8 h-8 rounded-full bg-red-100 text-red-500 hover:bg-red-200 flex items-center justify-center transition-colors duration-200 cursor-pointer"
+                          >
+                            <XMarkIcon className="w-5 h-5" />
+                          </button>
+                        )}
                       </div>
                     )
                   })
                 })()}
+
+                {/* 新增收款人輸入框 - 僅在管理模式下顯示 */}
+                {isManaging && (
+                  <div className="border-t border-dashed border-border pt-3 mt-3">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newRecipientNumber}
+                        onChange={(e) => setNewRecipientNumber(e.target.value)}
+                        placeholder={t('recipients.enterAccountToAdd')}
+                        className="flex-1 px-3 py-2 text-sm bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-200"
+                      />
+                      <button
+                        onClick={handleAddRecipient}
+                        disabled={addingRecipient || !newRecipientNumber}
+                        className="px-4 py-2 bg-primary text-white text-sm rounded-lg hover:bg-primary/90 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1"
+                      >
+                        {addingRecipient ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        ) : (
+                          <>
+                            <PlusIcon className="w-4 h-4" />
+                            {t('common.add')}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* 刪除確認對話框 */}
+            {showDeleteConfirm && recipientToDelete && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm mx-4">
+                  <h3 className="text-lg font-semibold text-text mb-2">{t('recipients.confirmDelete')}</h3>
+                  <p className="text-text/60 mb-4">
+                    {recipientToDelete.nickname || recipientToDelete.currency + ' Account'} (**** {recipientToDelete.accountNumber?.slice(-4)})
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowDeleteConfirm(false)
+                        setRecipientToDelete(null)
+                      }}
+                      className="flex-1 py-3 bg-surface border border-border text-text rounded-xl font-medium hover:bg-border/50 transition-colors duration-200 cursor-pointer"
+                    >
+                      {t('common.cancel')}
+                    </button>
+                    <button
+                      onClick={handleDeleteRecipient}
+                      className="flex-1 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors duration-200 cursor-pointer"
+                    >
+                      {t('common.delete')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

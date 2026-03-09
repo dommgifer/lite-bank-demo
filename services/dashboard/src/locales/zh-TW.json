@@ -25,7 +25,8 @@
     "free": "免費",
     "active": "啟用中",
     "max": "最大",
-    "status": "狀態"
+    "status": "狀態",
+    "add": "新增"
   },
   "nav": {
     "dashboard": "總覽",
@@ -245,10 +246,28 @@
     "showing": "顯示第 {{start}}-{{end}} 筆，共 {{total}} 筆交易",
     "types": {
       "transfer": "轉帳",
+      "transferIn": "轉帳收入",
+      "transferOut": "轉帳支出",
       "exchange": "換匯",
+      "exchangeIn": "換匯收入",
+      "exchangeOut": "換匯支出",
+      "deposit": "存款",
+      "withdrawal": "提款"
+    },
+    "descriptions": {
+      "transferFromTo": "從 {{from}} 轉帳至 {{to}}",
+      "exchangeFromTo": "{{from}} 換匯至 {{to}}",
       "deposit": "存款",
       "withdrawal": "提款"
     }
+  },
+  "recipients": {
+    "confirmDelete": "確定要刪除這個收款人嗎？",
+    "enterAccountToAdd": "輸入帳號新增...",
+    "alreadySaved": "此收款人已儲存",
+    "addSuccess": "收款人新增成功",
+    "saveThisRecipient": "儲存此收款人？",
+    "saved": "收款人已儲存"
   },
   "currencies": {
     "USD": "美元",

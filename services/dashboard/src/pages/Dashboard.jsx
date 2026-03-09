@@ -62,14 +62,19 @@ export default function Dashboard() {
         analyticsAPI.getSummary().catch(() => ({ data: { data: null } }))
       ])
 
-      setAccounts(accountsRes.data.data || [])
+      const userAccounts = accountsRes.data.data || []
+      setAccounts(userAccounts)
       setExchangeRates(ratesRes.data.data || [])
       setFinancialSummary(analyticsRes.data.data || null)
 
-      // Load recent transactions across all accounts
-      const txRes = await transactionAPI.getAll({ size: 5, sort: 'createdAt,desc' }).catch(() => ({ data: { data: { content: [] } } }))
+      // Load recent transactions and filter by user's accounts
+      const userAccountIds = userAccounts.map(acc => acc.accountId)
+      const txRes = await transactionAPI.getAll({ size: 20, sort: 'createdAt,desc' }).catch(() => ({ data: { data: { content: [] } } }))
       const txData = txRes.data.data
-      setTransactions(txData?.content || txData || [])
+      const allTransactions = txData?.content || txData || []
+      // Filter transactions to only show those belonging to user's accounts
+      const userTransactions = allTransactions.filter(tx => userAccountIds.includes(tx.accountId))
+      setTransactions(userTransactions.slice(0, 10))
     } catch (error) {
       console.error('Failed to load data:', error)
     } finally {
@@ -324,8 +329,8 @@ export default function Dashboard() {
                   DEBIT: { icon: ArrowUpIcon, label: t('history.types.withdrawal'), color: 'text-red-500', bg: 'bg-red-100' },
                   DEPOSIT: { icon: ArrowDownIcon, label: t('history.types.deposit'), color: 'text-green-600', bg: 'bg-green-100' },
                   WITHDRAWAL: { icon: ArrowUpIcon, label: t('history.types.withdrawal'), color: 'text-red-500', bg: 'bg-red-100' },
-                  TRANSFER_IN: { icon: ArrowDownIcon, label: t('history.types.transfer'), color: 'text-green-600', bg: 'bg-green-100' },
-                  TRANSFER_OUT: { icon: ArrowUpIcon, label: t('history.types.transfer'), color: 'text-red-500', bg: 'bg-red-100' },
+                  TRANSFER_IN: { icon: ArrowDownIcon, label: t('history.types.transferIn'), color: 'text-green-600', bg: 'bg-green-100' },
+                  TRANSFER_OUT: { icon: ArrowUpIcon, label: t('history.types.transferOut'), color: 'text-red-500', bg: 'bg-red-100' },
                   EXCHANGE_IN: { icon: ArrowsRightLeftIcon, label: t('history.types.exchange'), color: 'text-blue-600', bg: 'bg-blue-100' },
                   EXCHANGE_OUT: { icon: ArrowsRightLeftIcon, label: t('history.types.exchange'), color: 'text-blue-600', bg: 'bg-blue-100' },
                 }

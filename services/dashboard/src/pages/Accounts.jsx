@@ -77,6 +77,49 @@ export default function Accounts() {
     return icons[currency] || { symbol: currency, bg: 'bg-gray-100', text: 'text-gray-600', name: `${currency} 帳戶` }
   }
 
+  // 取得交易類型的翻譯標籤
+  const getTransactionTypeLabel = (transactionType) => {
+    const typeMap = {
+      CREDIT: t('history.types.deposit'),
+      DEBIT: t('history.types.withdrawal'),
+      DEPOSIT: t('history.types.deposit'),
+      WITHDRAWAL: t('history.types.withdrawal'),
+      TRANSFER_IN: t('history.types.transferIn'),
+      TRANSFER_OUT: t('history.types.transferOut'),
+      EXCHANGE_IN: t('history.types.exchangeIn'),
+      EXCHANGE_OUT: t('history.types.exchangeOut'),
+    }
+    return typeMap[transactionType] || transactionType
+  }
+
+  // 翻譯 description
+  const translateDescription = (description, transactionType) => {
+    if (!description) return ''
+
+    // Transfer: "Transfer from account X to account Y: Note"
+    const transferMatch = description.match(/Transfer from account ([^\s]+) to account ([^\s:]+)/)
+    if (transferMatch) {
+      return t('history.descriptions.transferFromTo', { from: transferMatch[1], to: transferMatch[2] })
+    }
+
+    // Exchange: "Currency exchange from TWD to EUR"
+    const exchangeMatch = description.match(/Currency exchange from ([A-Z]+) to ([A-Z]+)/)
+    if (exchangeMatch) {
+      return t('history.descriptions.exchangeFromTo', { from: exchangeMatch[1], to: exchangeMatch[2] })
+    }
+
+    // Simple cases
+    if (description === 'Deposit') return t('history.descriptions.deposit')
+    if (description === 'Withdrawal') return t('history.descriptions.withdrawal')
+
+    return description
+  }
+
+  // 判斷是否為支出類型
+  const isExpenseType = (transactionType) => {
+    return ['WITHDRAWAL', 'DEBIT', 'TRANSFER_OUT', 'EXCHANGE_OUT'].includes(transactionType)
+  }
+
   // Get currencies that user doesn't have yet
   const existingCurrencies = accounts.map(acc => acc.currency)
   const availableCurrencies = allCurrencies.filter(c => !existingCurrencies.includes(c))
@@ -261,45 +304,32 @@ export default function Accounts() {
                   >
                     <div className="flex items-center space-x-4">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        tx.transactionType === 'WITHDRAWAL'
-                          ? 'bg-red-100'
-                          : tx.transactionType === 'DEPOSIT'
-                            ? 'bg-green-100'
-                            : tx.transactionType === 'EXCHANGE' || tx.transactionType === 'EXCHANGE_IN' || tx.transactionType === 'EXCHANGE_OUT'
-                              ? 'bg-purple-100'
-                              : tx.amount > 0
-                                ? 'bg-green-100'
-                                : 'bg-red-100'
+                        tx.transactionType === 'EXCHANGE_IN' || tx.transactionType === 'EXCHANGE_OUT'
+                          ? 'bg-purple-100'
+                          : isExpenseType(tx.transactionType)
+                            ? 'bg-red-100'
+                            : 'bg-green-100'
                       }`}>
-                        {tx.transactionType === 'WITHDRAWAL' ? (
-                          <ArrowDownIcon className="w-5 h-5 text-red-500" />
-                        ) : tx.transactionType === 'DEPOSIT' ? (
-                          <ArrowUpIcon className="w-5 h-5 text-green-600" />
-                        ) : tx.transactionType === 'EXCHANGE' || tx.transactionType === 'EXCHANGE_IN' || tx.transactionType === 'EXCHANGE_OUT' ? (
+                        {tx.transactionType === 'EXCHANGE_IN' || tx.transactionType === 'EXCHANGE_OUT' ? (
                           <ArrowsRightLeftIcon className="w-5 h-5 text-purple-600" />
-                        ) : tx.amount > 0 ? (
-                          <ArrowUpIcon className="w-5 h-5 text-green-600" />
-                        ) : (
+                        ) : isExpenseType(tx.transactionType) ? (
                           <ArrowDownIcon className="w-5 h-5 text-red-500" />
+                        ) : (
+                          <ArrowUpIcon className="w-5 h-5 text-green-600" />
                         )}
                       </div>
                       <div>
-                        <p className="font-medium text-text">{tx.description || tx.transactionType || tx.type}</p>
+                        <p className="font-medium text-text">{getTransactionTypeLabel(tx.transactionType)}</p>
                         <p className="text-sm text-text/50">
+                          {translateDescription(tx.description, tx.transactionType)}
+                        </p>
+                        <p className="text-xs text-text/40">
                           {new Date(tx.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
-                    <p className={`font-semibold ${
-                      tx.transactionType === 'WITHDRAWAL'
-                        ? 'text-red-500'
-                        : tx.transactionType === 'DEPOSIT'
-                          ? 'text-green-600'
-                          : tx.amount > 0
-                            ? 'text-green-600'
-                            : 'text-red-500'
-                    }`}>
-                      {tx.transactionType === 'WITHDRAWAL' ? '-' : tx.transactionType === 'DEPOSIT' ? '+' : tx.amount > 0 ? '+' : ''}
+                    <p className={`font-semibold ${isExpenseType(tx.transactionType) ? 'text-red-500' : 'text-green-600'}`}>
+                      {isExpenseType(tx.transactionType) ? '-' : '+'}
                       {formatCurrency(Math.abs(tx.amount), tx.currency)}
                     </p>
                   </div>
