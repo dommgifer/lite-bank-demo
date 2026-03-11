@@ -15,8 +15,8 @@ cd "$SCRIPT_DIR"
 # 檢查是否有正在運行的 Vite 開發 server
 echo -e "${YELLOW}檢查是否有舊的開發 server 正在運行...${NC}"
 
-# 尋找運行在 5173 端口的進程 (Vite 預設端口)
-VITE_PID=$(lsof -ti:5173)
+# 尋找運行在 3001 端口的進程 (vite.config.js 設定的端口)
+VITE_PID=$(lsof -ti:3001)
 
 if [ ! -z "$VITE_PID" ]; then
     echo -e "${YELLOW}發現正在運行的開發 server (PID: $VITE_PID)${NC}"
