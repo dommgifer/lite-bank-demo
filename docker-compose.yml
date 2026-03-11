@@ -535,6 +535,32 @@ services:
     networks:
       - litebank
 
+  # Frontend Dashboard (React + Nginx)
+  # 使用 profile，預設不啟動，需要時用 --profile frontend
+  dashboard:
+    profiles: ["frontend"]
+    build:
+      context: ./services/dashboard
+      dockerfile: Dockerfile
+    container_name: litebank-dashboard
+    environment:
+      # 可透過環境變數配置後端服務 URL，不需重新 build
+      API_GATEWAY_URL: http://api-gateway:8080
+      NOTIFICATION_SERVICE_URL: http://notification-service:8089
+    ports:
+      - "3001:80"
+    depends_on:
+      - api-gateway
+      - notification-service
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - litebank
+
 networks:
   litebank:
     driver: bridge
