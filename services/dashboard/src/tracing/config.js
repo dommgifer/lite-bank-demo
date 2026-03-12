@@ -7,7 +7,8 @@ export const TRACING_CONFIG = {
   serviceVersion: '1.0.0',
 
   // OTel Collector URL (HTTP)
-  collectorUrl: import.meta.env.VITE_OTEL_COLLECTOR_URL || 'http://localhost:4318/v1/traces',
+  // 預設使用相對路徑，透過 nginx proxy 轉發到 collector
+  collectorUrl: import.meta.env.VITE_OTEL_COLLECTOR_URL || '/v1/traces',
 
   // 是否啟用追蹤
   enabled: import.meta.env.VITE_OTEL_ENABLED !== 'false',
