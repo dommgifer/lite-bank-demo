@@ -6,34 +6,133 @@ on:
     paths:
       - 'services/**'
       - '.github/workflows/build-images.yaml'
-  workflow_dispatch:  # 手動觸發
+  workflow_dispatch:
+    inputs:
+      build_all:
+        description: '強制建構所有服務'
+        required: false
+        default: 'false'
+        type: boolean
 
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/litebank
 
 jobs:
-  # 先建構 Java 服務
+  # 檢測哪些服務有變更
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      java-services: ${{ steps.filter.outputs.java-services }}
+      java-matrix: ${{ steps.set-matrix.outputs.matrix }}
+      dashboard: ${{ steps.filter.outputs.dashboard }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed services
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            user-service:
+              - 'services/user-service/**'
+            account-service:
+              - 'services/account-service/**'
+            transaction-service:
+              - 'services/transaction-service/**'
+            exchange-rate-service:
+              - 'services/exchange-rate-service/**'
+            transfer-service:
+              - 'services/transfer-service/**'
+            deposit-withdrawal-service:
+              - 'services/deposit-withdrawal-service/**'
+            exchange-service:
+              - 'services/exchange-service/**'
+            analytics-processor-service:
+              - 'services/analytics-processor-service/**'
+            analytics-query-service:
+              - 'services/analytics-query-service/**'
+            notification-service:
+              - 'services/notification-service/**'
+            api-gateway:
+              - 'services/api-gateway/**'
+            dashboard:
+              - 'services/dashboard/**'
+            java-services:
+              - 'services/user-service/**'
+              - 'services/account-service/**'
+              - 'services/transaction-service/**'
+              - 'services/exchange-rate-service/**'
+              - 'services/transfer-service/**'
+              - 'services/deposit-withdrawal-service/**'
+              - 'services/exchange-service/**'
+              - 'services/analytics-processor-service/**'
+              - 'services/analytics-query-service/**'
+              - 'services/notification-service/**'
+              - 'services/api-gateway/**'
+
+      - name: Build matrix for changed Java services
+        id: set-matrix
+        run: |
+          SERVICES=()
+          if [ "${{ steps.filter.outputs.user-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
+            SERVICES+=("user-service")
+          fi
+          if [ "${{ steps.filter.outputs.account-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
+            SERVICES+=("account-service")
+          fi
+          if [ "${{ steps.filter.outputs.transaction-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
+            SERVICES+=("transaction-service")
+          fi
+          if [ "${{ steps.filter.outputs.exchange-rate-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
+            SERVICES+=("exchange-rate-service")
+          fi
+          if [ "${{ steps.filter.outputs.transfer-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
+            SERVICES+=("transfer-service")
+          fi
+          if [ "${{ steps.filter.outputs.deposit-withdrawal-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
+            SERVICES+=("deposit-withdrawal-service")
+          fi
+          if [ "${{ steps.filter.outputs.exchange-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
+            SERVICES+=("exchange-service")
+          fi
+          if [ "${{ steps.filter.outputs.analytics-processor-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
+            SERVICES+=("analytics-processor-service")
+          fi
+          if [ "${{ steps.filter.outputs.analytics-query-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
+            SERVICES+=("analytics-query-service")
+          fi
+          if [ "${{ steps.filter.outputs.notification-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
+            SERVICES+=("notification-service")
+          fi
+          if [ "${{ steps.filter.outputs.api-gateway }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
+            SERVICES+=("api-gateway")
+          fi
+
+          # Convert to JSON array
+          if [ ${#SERVICES[@]} -eq 0 ]; then
+            echo "matrix={\"service\":[]}" >> $GITHUB_OUTPUT
+          else
+            JSON=$(printf '%s\n' "${SERVICES[@]}" | jq -R . | jq -s -c '{service: .}')
+            echo "matrix=$JSON" >> $GITHUB_OUTPUT
+          fi
+          echo "Changed services: ${SERVICES[*]}"
+
+  # 建構有變更的 Java 服務
   build-java-services:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.java-services == 'true' || github.event.inputs.build_all == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
 
     strategy:
-      matrix:
-        service:
-          - user-service
-          - account-service
-          - transaction-service
-          - exchange-rate-service
-          - transfer-service
-          - deposit-withdrawal-service
-          - exchange-service
-          - analytics-processor-service
-          - analytics-query-service
-          - notification-service
-          - api-gateway
+      matrix: ${{ fromJson(needs.detect-changes.outputs.java-matrix) }}
+      fail-fast: false
 
     steps:
       - name: Checkout
@@ -83,8 +182,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # 建構前端 Dashboard
+  # 建構前端 Dashboard（只有當 dashboard 目錄有變更時）
   build-dashboard:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.dashboard == 'true' || github.event.inputs.build_all == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
