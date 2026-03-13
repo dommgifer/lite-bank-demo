@@ -11,8 +11,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
+
+import static net.logstash.logback.marker.Markers.append;
 
 @Slf4j
 @Service
@@ -42,11 +44,17 @@ public class TransferService {
             span.setAttribute("transfer.id", transferId);
 
             // Step 1: Get source account
-            log.info("Getting source account: {}", request.getFromAccountId());
+            log.info(append("context", Map.of(
+                    "step", "GET_SOURCE_ACCOUNT",
+                    "accountId", request.getFromAccountId()
+            )), "Getting source account");
             AccountResponse fromAccount = accountServiceClient.getAccount(request.getFromAccountId());
 
             // Step 2: Get destination account
-            log.info("Getting destination account: {}", request.getToAccountId());
+            log.info(append("context", Map.of(
+                    "step", "GET_DEST_ACCOUNT",
+                    "accountId", request.getToAccountId()
+            )), "Getting destination account");
             AccountResponse toAccount = accountServiceClient.getAccount(request.getToAccountId());
 
             // Validate currency match
@@ -71,7 +79,14 @@ public class TransferService {
             }
 
             // Step 3: Execute atomic transfer via Transaction Service
-            log.info("Executing atomic transfer via Transaction Service");
+            log.info(append("context", Map.of(
+                    "step", "EXECUTE_TRANSFER",
+                    "transferId", transferId,
+                    "fromAccountId", request.getFromAccountId(),
+                    "toAccountId", request.getToAccountId(),
+                    "amount", request.getAmount(),
+                    "currency", request.getCurrency()
+            )), "Executing atomic transfer via Transaction Service");
 
             String description = "Transfer from account " + fromAccount.getAccountNumber() +
                     " to account " + toAccount.getAccountNumber() +
@@ -88,11 +103,13 @@ public class TransferService {
 
             TransferTransactionResponse transferResult = transactionServiceClient.transfer(transferRequest);
 
-            log.info("Transfer completed - Source Txn: {}, Dest Txn: {}, Source Balance: {}, Dest Balance: {}",
-                    transferResult.getSourceTransactionId(),
-                    transferResult.getDestinationTransactionId(),
-                    transferResult.getSourceBalanceAfter(),
-                    transferResult.getDestinationBalanceAfter());
+            log.info(append("context", Map.of(
+                    "step", "TRANSFER_EXECUTED",
+                    "sourceTransactionId", transferResult.getSourceTransactionId(),
+                    "destTransactionId", transferResult.getDestinationTransactionId(),
+                    "sourceBalanceAfter", transferResult.getSourceBalanceAfter(),
+                    "destBalanceAfter", transferResult.getDestinationBalanceAfter()
+            )), "Transfer transactions created");
 
             // Build response
             TransferResponse response = TransferResponse.builder()
@@ -109,7 +126,14 @@ public class TransferService {
                     .createdAt(transferResult.getCreatedAt())
                     .build();
 
-            log.info("Transfer completed successfully: {}", transferId);
+            log.info(append("context", Map.of(
+                    "transferId", transferId,
+                    "fromAccountId", request.getFromAccountId(),
+                    "toAccountId", request.getToAccountId(),
+                    "amount", request.getAmount(),
+                    "currency", request.getCurrency(),
+                    "status", "COMPLETED"
+            )), "Transfer completed successfully");
 
             // Publish notification to sender (async, non-blocking)
             if (userId != null) {
@@ -124,7 +148,10 @@ public class TransferService {
                     );
                 } catch (Exception e) {
                     // Notification failure should not affect transfer result
-                    log.warn("Failed to publish notification for transfer {}: {}", transferId, e.getMessage());
+                    log.warn(append("context", Map.of(
+                            "transferId", transferId,
+                            "error", e.getMessage()
+                    )), "Failed to publish notification for transfer");
                 }
             }
 
@@ -141,7 +168,11 @@ public class TransferService {
                     );
                 } catch (Exception e) {
                     // Notification failure should not affect transfer result
-                    log.warn("Failed to publish notification to receiver for transfer {}: {}", transferId, e.getMessage());
+                    log.warn(append("context", Map.of(
+                            "transferId", transferId,
+                            "receiverUserId", String.valueOf(toAccount.getUserId()),
+                            "error", e.getMessage()
+                    )), "Failed to publish notification to receiver");
                 }
             }
 
@@ -149,7 +180,13 @@ public class TransferService {
 
         } catch (InsufficientBalanceException | InvalidTransferException e) {
             span.recordException(e);
-            log.error("Transfer validation failed: {}", e.getMessage());
+            log.error(append("context", Map.of(
+                    "fromAccountId", request.getFromAccountId(),
+                    "toAccountId", request.getToAccountId(),
+                    "amount", request.getAmount(),
+                    "errorType", e.getClass().getSimpleName(),
+                    "errorMessage", e.getMessage()
+            )), "Transfer validation failed");
             // Publish failure notification
             if (userId != null) {
                 try {
@@ -161,13 +198,21 @@ public class TransferService {
                             e.getMessage()
                     );
                 } catch (Exception ex) {
-                    log.warn("Failed to publish failure notification: {}", ex.getMessage());
+                    log.warn(append("context", Map.of(
+                            "error", ex.getMessage()
+                    )), "Failed to publish failure notification");
                 }
             }
             throw e;
         } catch (Exception e) {
             span.recordException(e);
-            log.error("Transfer failed: {}", e.getMessage(), e);
+            log.error(append("context", Map.of(
+                    "fromAccountId", request.getFromAccountId(),
+                    "toAccountId", request.getToAccountId(),
+                    "amount", request.getAmount(),
+                    "errorType", e.getClass().getSimpleName(),
+                    "errorMessage", e.getMessage()
+            )), "Transfer failed", e);
             throw new RuntimeException("Transfer failed: " + e.getMessage(), e);
         } finally {
             span.end();
