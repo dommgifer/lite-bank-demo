@@ -1,0 +1,196 @@
+# ===========================================
+# LiteBank Helm Chart Configuration
+# ===========================================
+
+# ===========================================
+# 全域設定
+# ===========================================
+global:
+  imageRegistry: "ghcr.io/dommgifer/litebank/"
+  imagePullSecrets: []
+
+# ===========================================
+# 基礎設施
+# ===========================================
+infrastructure:
+  postgres:
+    enabled: true
+    image: postgres:16-alpine
+    database: litebank
+    user: litebank_user
+    storage: 1Gi
+    external:
+      host: ""
+      port: 5432
+
+  kafka:
+    enabled: true
+    image: confluentinc/cp-kafka:7.5.0
+    clusterId: "MkU3OEVBNTcwNTJENDM2Qk"
+    storage: 1Gi
+    external:
+      bootstrapServers: ""
+
+# ===========================================
+# 可觀測性
+# ===========================================
+observability:
+  otelCollector:
+    enabled: false
+    image: otel/opentelemetry-collector-contrib:0.105.0
+    external:
+      endpoint: "http://alloy.alloy:4318"
+
+  tempo:
+    enabled: false
+    image: grafana/tempo:2.3.0
+    storage: 2Gi
+    external:
+      endpoint: "http://tempo.tempo:4318"
+
+  loki:
+    enabled: true
+    image: grafana/loki:2.9.0
+    storage: 2Gi
+    external:
+      endpoint: ""
+
+  prometheus:
+    enabled: false
+    image: prom/prometheus:v2.48.0
+    storage: 2Gi
+    external:
+      endpoint: "http://rancher-monitoring-prometheus.cattle-monitoring-system:9090"
+
+  grafana:
+    enabled: false
+    image: grafana/grafana:10.2.0
+    adminUser: admin
+    adminPassword: admin
+    external:
+      endpoint: "http://rancher-monitoring-grafana.cattle-monitoring-system:80"
+
+# ===========================================
+# 敏感資料
+# ===========================================
+secrets:
+  dbPassword: litebank_pass
+  jwtSecret: "your-secret-key-change-in-production-min-256-bits-required-for-hs256-algorithm"
+  jwtExpiration: "86400000"
+
+# ===========================================
+# 服務共用設定
+# ===========================================
+services:
+  common:
+    imagePullPolicy: Always  # 使用 latest tag 時必須設為 Always
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+  # Data Layer
+  userService:
+    image: user-service:latest
+    port: 8080
+    replicas: 1
+
+  accountService:
+    image: account-service:latest
+    port: 8081
+    replicas: 1
+
+  transactionService:
+    image: transaction-service:latest
+    port: 8082
+    replicas: 1
+
+  exchangeRateService:
+    image: exchange-rate-service:latest
+    port: 8084
+    replicas: 1
+
+  # Coordination Layer
+  transferService:
+    image: transfer-service:latest
+    port: 8083
+    replicas: 1
+
+  depositWithdrawalService:
+    image: deposit-withdrawal-service:latest
+    port: 8086
+    replicas: 1
+
+  exchangeService:
+    image: exchange-service:latest
+    port: 8085
+    replicas: 1
+
+  # Analytics
+  analyticsProcessor:
+    image: analytics-processor-service:latest
+    port: 8087
+    replicas: 1
+
+  analyticsQuery:
+    image: analytics-query-service:latest
+    port: 8088
+    replicas: 1
+
+  # Notification
+  notificationService:
+    image: notification-service:latest
+    port: 8089
+    replicas: 1
+
+  # Gateway
+  apiGateway:
+    image: api-gateway:latest
+    port: 8080
+    replicas: 1
+
+  # Frontend
+  dashboard:
+    image: dashboard:latest
+    port: 80
+    replicas: 1
+
+# ===========================================
+# 網路入口
+# ===========================================
+
+# Ingress 配置
+ingress:
+  enabled: false
+  className: nginx
+  host: litebank.local
+  tls:
+    enabled: false
+    secretName: litebank-tls
+  annotations: {}
+
+# Gateway API 配置
+gateway:
+  enabled: true
+  className: cilium
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+    - name: https
+      port: 443
+      protocol: HTTPS
+      tls:
+        enabled: false
+        secretName: litebank-tls
+  routes:
+    host: litebank.192.168.1.70.nip.io
+    # 額外路由 (可選)
+    extraRoutes:
+      - name: grafana
+        path: /grafana
+        service: grafana
+        port: 3000
