@@ -16,6 +16,7 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.MDC;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -69,11 +70,20 @@ public class TracingFilter implements Filter {
             SpanContext spanContext = span.getSpanContext();
             if (spanContext.isValid()) {
                 httpResponse.setHeader("X-Trace-Id", spanContext.getTraceId());
+                // Put traceId and spanId into MDC for logging
+                MDC.put("traceId", spanContext.getTraceId());
+                MDC.put("spanId", spanContext.getSpanId());
             }
 
-            chain.doFilter(request, response);
+            try {
+                chain.doFilter(request, response);
 
-            span.setAttribute("http.status_code", httpResponse.getStatus());
+                span.setAttribute("http.status_code", httpResponse.getStatus());
+            } finally {
+                // Clean up MDC
+                MDC.remove("traceId");
+                MDC.remove("spanId");
+            }
         } catch (Exception e) {
             span.recordException(e);
             throw e;

@@ -1,6 +1,8 @@
 package com.litebank.transactionservice.config;
 
 import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.TextMapGetter;
@@ -12,6 +14,7 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -65,7 +68,20 @@ public class TracingFilter implements Filter {
 
         // Make the extracted context current for the duration of this request
         try (Scope scope = extractedContext.makeCurrent()) {
-            chain.doFilter(request, response);
+            // Put traceId and spanId into MDC for logging
+            SpanContext spanContext = Span.current().getSpanContext();
+            if (spanContext.isValid()) {
+                MDC.put("traceId", spanContext.getTraceId());
+                MDC.put("spanId", spanContext.getSpanId());
+            }
+
+            try {
+                chain.doFilter(request, response);
+            } finally {
+                // Clean up MDC
+                MDC.remove("traceId");
+                MDC.remove("spanId");
+            }
         }
     }
 }

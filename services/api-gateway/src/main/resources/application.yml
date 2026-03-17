@@ -173,12 +173,9 @@ management:
       prometheus:
         enabled: true
 
-# Logging
+# Logging levels (format configured in logback-spring.xml)
 logging:
   level:
     root: INFO
     com.litebank.gateway: DEBUG
-    org.springframework.cloud.gateway: DEBUG
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+    org.springframework.cloud.gateway: INFO
