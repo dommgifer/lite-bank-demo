@@ -26,6 +26,11 @@ server:
   servlet:
     context-path: /
 
+# Service URLs
+services:
+  account-service:
+    url: ${ACCOUNT_SERVICE_URL:http://account-service:8081}
+
 # JWT Configuration
 jwt:
   secret: ${JWT_SECRET:your-secret-key-change-in-production-min-256-bits-required-for-hs256-algorithm}

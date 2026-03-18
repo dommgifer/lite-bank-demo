@@ -2,6 +2,8 @@ package com.litebank.userservice.exception;
 
 import com.litebank.userservice.dto.ApiResponse;
 import io.opentelemetry.api.trace.Span;
+import com.litebank.userservice.exception.DuplicateUserException;
+import com.litebank.userservice.exception.RegistrationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -63,6 +65,46 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(error, traceId));
+    }
+
+    @ExceptionHandler(DuplicateUserException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDuplicateUserException(DuplicateUserException ex) {
+        String traceId = Span.current().getSpanContext().getTraceId();
+
+        log.error("Duplicate user: {}, trace_id: {}", ex.getMessage(), traceId);
+
+        ApiResponse.ErrorDetails error = ApiResponse.ErrorDetails.builder()
+                .code("ERR_REG_001")
+                .type("DUPLICATE_USER")
+                .message(ex.getMessage())
+                .category("registration")
+                .traceId(traceId)
+                .timestamp(Instant.now().toString())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(error, traceId));
+    }
+
+    @ExceptionHandler(RegistrationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRegistrationException(RegistrationException ex) {
+        String traceId = Span.current().getSpanContext().getTraceId();
+
+        log.error("Registration failed: {}, trace_id: {}", ex.getMessage(), traceId);
+
+        ApiResponse.ErrorDetails error = ApiResponse.ErrorDetails.builder()
+                .code("ERR_REG_002")
+                .type("REGISTRATION_FAILED")
+                .message(ex.getMessage())
+                .category("registration")
+                .traceId(traceId)
+                .timestamp(Instant.now().toString())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(ApiResponse.error(error, traceId));
     }
 
