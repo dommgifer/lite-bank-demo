@@ -58,7 +58,17 @@
       "instantTransfers": "即時轉帳",
       "bankSecurity": "銀行級安全"
     },
-    "copyright": "© 2026 Lite Bank. 版權所有。"
+    "copyright": "© 2026 Lite Bank. 版權所有。",
+    "createAccount": "建立帳戶",
+    "createAccountSubtitle": "建立您的 Lite Bank 帳戶",
+    "email": "電子郵件",
+    "enterEmail": "請輸入電子郵件",
+    "usernameHint": "3-50 字元，英數字及底線",
+    "passwordHint": "至少 8 個字元",
+    "alreadyHaveAccount": "已有帳戶？",
+    "registerSuccess": "帳戶建立成功！",
+    "registerSuccessDesc": "請使用您的帳號密碼登入",
+    "registerFailed": "註冊失敗，請重試"
   },
   "dashboard": {
     "welcomeBack": "歡迎回來，{{name}}",

@@ -58,7 +58,17 @@
       "instantTransfers": "Instant transfers",
       "bankSecurity": "Bank-grade security"
     },
-    "copyright": "© 2026 Lite Bank. All rights reserved."
+    "copyright": "© 2026 Lite Bank. All rights reserved.",
+    "createAccount": "Create Account",
+    "createAccountSubtitle": "Create your Lite Bank account",
+    "email": "Email",
+    "enterEmail": "Enter your email",
+    "usernameHint": "3-50 characters, letters, numbers and underscores",
+    "passwordHint": "At least 8 characters",
+    "alreadyHaveAccount": "Already have an account?",
+    "registerSuccess": "Account created successfully!",
+    "registerSuccessDesc": "Please sign in with your credentials",
+    "registerFailed": "Registration failed, please try again"
   },
   "dashboard": {
     "welcomeBack": "Welcome back, {{name}}",
