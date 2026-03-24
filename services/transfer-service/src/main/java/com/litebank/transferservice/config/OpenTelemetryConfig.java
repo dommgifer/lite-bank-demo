@@ -24,7 +24,6 @@ import org.springframework.context.annotation.Configuration;
 public class OpenTelemetryConfig {
 
     private static final AttributeKey<String> SERVICE_NAME_KEY = AttributeKey.stringKey("service.name");
-    private static final AttributeKey<String> SERVICE_NAMESPACE_KEY = AttributeKey.stringKey("service.namespace");
 
     @Value("${otel.service.name}")
     private String serviceName;
@@ -37,8 +36,6 @@ public class OpenTelemetryConfig {
         Resource resource = Resource.getDefault()
                 .merge(Resource.create(Attributes.builder()
                         .put(SERVICE_NAME_KEY, serviceName)
-                        .put(SERVICE_NAMESPACE_KEY, "lite-bank-demo")
-                        .put("deployment.environment", "local")
                         .build()));
 
         OtlpHttpSpanExporter spanExporter = OtlpHttpSpanExporter.builder()

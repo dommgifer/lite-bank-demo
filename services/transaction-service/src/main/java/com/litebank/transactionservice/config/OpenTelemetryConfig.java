@@ -33,8 +33,6 @@ public class OpenTelemetryConfig {
         Resource resource = Resource.getDefault()
                 .merge(Resource.create(Attributes.builder()
                         .put(ResourceAttributes.SERVICE_NAME, serviceName)
-                        .put(ResourceAttributes.SERVICE_NAMESPACE, "lite-bank-demo")
-                        .put("deployment.environment", "local")
                         .build()));
 
         OtlpHttpSpanExporter spanExporter = OtlpHttpSpanExporter.builder()
