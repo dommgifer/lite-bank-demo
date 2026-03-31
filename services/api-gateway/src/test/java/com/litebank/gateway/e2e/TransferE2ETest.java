@@ -15,10 +15,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * E2E Tests for Same-Currency Transfer Operations (FR4)
- * Tests complete SAGA-based transfer flow through API Gateway
- * This is the CRITICAL test - validates distributed transaction with compensation logic
+ * Tests complete transfer flow through API Gateway
+ * Validates atomic distributed transaction via pessimistic locking
  */
-@DisplayName("E2E: Same-Currency Transfer (FR4 - SAGA Pattern)")
+@DisplayName("E2E: Same-Currency Transfer (FR4)")
 class TransferE2ETest extends BaseE2ETest {
 
     private String token;
@@ -75,7 +75,7 @@ class TransferE2ETest extends BaseE2ETest {
                 .body("traceId", notNullValue());
 
         String traceId = getTraceId(response);
-        assertNotNull(traceId, "Trace ID should be present for SAGA tracking");
+        assertNotNull(traceId, "Trace ID should be present for transfer tracking");
 
         // Verify source account balance decreased
         await().untilAsserted(() -> {
@@ -164,11 +164,9 @@ class TransferE2ETest extends BaseE2ETest {
     }
 
     @Test
-    @DisplayName("FR7: SAGA - Should handle transaction compensation on failure")
-    void testSagaCompensationLogic() {
-        // This test verifies the SAGA compensation logic
-        // In a real scenario, we would inject failure (e.g., network delay, service down)
-        // For now, we test that failed transfers don't modify balances
+    @DisplayName("FR7: Should leave balances unchanged when transfer fails")
+    void testTransferFailureAtomicity() {
+        // Verify that failed transfers don't modify balances (DB transaction rollback)
 
         // Arrange: Get initial balances
         float initialSourceBalance = RestAssured.given(requestSpec)
@@ -191,7 +189,7 @@ class TransferE2ETest extends BaseE2ETest {
                         "amount": 100.00,
                         "currency": "USD",
                         "referenceId": "TRANSFER-%s",
-                        "description": "Test SAGA compensation"
+                        "description": "Test transfer failure atomicity"
                     }
                     """, sourceAccountId, UUID.randomUUID()))
                 .post("/api/v1/transfers")
@@ -200,7 +198,7 @@ class TransferE2ETest extends BaseE2ETest {
                 .body("success", equalTo(false))
                 .body("traceId", notNullValue());
 
-        // Assert: Balances should remain unchanged (compensation logic executed)
+        // Assert: Balances should remain unchanged (DB transaction rolled back)
         await().untilAsserted(() -> {
             RestAssured.given(requestSpec)
                     .header("Authorization", "Bearer " + token)
@@ -339,8 +337,8 @@ class TransferE2ETest extends BaseE2ETest {
     }
 
     @Test
-    @DisplayName("Should propagate trace ID through SAGA transfer flow")
-    void testTraceIdPropagationInSaga() {
+    @DisplayName("Should propagate trace ID through transfer flow")
+    void testTraceIdPropagationInTransfer() {
         // Act: Execute transfer
         Response response = RestAssured.given(requestSpec)
                 .header("Authorization", "Bearer " + token)
@@ -358,7 +356,7 @@ class TransferE2ETest extends BaseE2ETest {
 
         // Assert: Trace ID present in response
         String traceId = getTraceId(response);
-        assertNotNull(traceId, "Trace ID must be present for SAGA tracking");
+        assertNotNull(traceId, "Trace ID must be present for transfer tracking");
         assertFalse(traceId.isEmpty());
 
         response.then()

@@ -167,7 +167,7 @@ class FullUserJourneyE2ETest extends BaseE2ETest {
         Long usd2AccountId = usd2AccountIdInt.longValue();
         traceIds.add(getTraceId(createUsd2Response));
 
-        // === STEP 6: Transfer Money (FR4 - SAGA) ===
+        // === STEP 6: Transfer Money (FR4) ===
         Response transferResponse = RestAssured.given(requestSpec)
                 .header("Authorization", "Bearer " + token)
                 .body(String.format("""
@@ -319,10 +319,10 @@ class FullUserJourneyE2ETest extends BaseE2ETest {
         // ✅ FR1: Query accounts
         // ✅ FR2: Deposit
         // ✅ FR3: Withdrawal
-        // ✅ FR4: Same-currency transfer (SAGA)
+        // ✅ FR4: Same-currency transfer
         // ✅ FR5: Cross-currency exchange
         // ✅ FR6: Exchange rate query
-        // ✅ FR7: SAGA compensation (implicitly via successful transfer)
+        // ✅ FR7: Transfer atomicity (balance unchanged on failure)
         // ✅ FR8: Idempotency (via referenceId usage)
         // ✅ FR11: Transaction query with complete metadata
         // ✅ FR15: Trace ID preservation in records
