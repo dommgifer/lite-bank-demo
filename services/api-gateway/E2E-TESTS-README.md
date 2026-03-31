@@ -11,7 +11,7 @@ Complete End-to-End tests for **Lite Bank Demo** - testing all banking operation
 | `AuthenticationE2ETest` | - | 8 | User registration, login, JWT validation |
 | `AccountManagementE2ETest` | FR1 | 10 | Account creation & query |
 | `DepositWithdrawalE2ETest` | FR2, FR3, FR8 | 10 | Deposit & withdrawal operations |
-| `TransferE2ETest` | FR4, FR7, FR8 | 10 | Same-currency transfers (SAGA) |
+| `TransferE2ETest` | FR4, FR7, FR8 | 10 | Same-currency transfers |
 | `ExchangeE2ETest` | FR5, FR6, FR8 | 10 | Currency exchange & rates |
 | `TransactionHistoryE2ETest` | FR11, FR12, FR15 | 10 | Transaction queries & audit trail |
 | `FullUserJourneyE2ETest` | FR1-FR8 | 2 | Complete user journey |
@@ -27,7 +27,7 @@ Complete End-to-End tests for **Lite Bank Demo** - testing all banking operation
 - **FR4**: Same-currency transfer between accounts
 - **FR5**: Cross-currency exchange
 - **FR6**: Exchange rate query
-- **FR7**: SAGA compensation logic on failure
+- **FR7**: Transfer failure leaves balances unchanged
 - **FR8**: Transaction idempotency (using referenceId)
 
 ### ✅ Complete System Integration
@@ -67,7 +67,7 @@ mvn clean test -Dtest="com.litebank.gateway.e2e.*"
 # Authentication tests only
 mvn test -Dtest=AuthenticationE2ETest
 
-# Transfer tests (SAGA validation)
+# Transfer tests
 mvn test -Dtest=TransferE2ETest
 
 # Complete user journey
@@ -164,7 +164,7 @@ The `FullUserJourneyE2ETest.testCompleteUserJourney()` simulates a realistic ban
 3. Deposit $500 to USD account
 4. Withdraw $200 from USD account
 5. Create second USD account
-6. Transfer $300 between USD accounts (SAGA)
+6. Transfer $300 between USD accounts
 7. Query USD to EUR exchange rate
 8. Exchange $200 USD → EUR
 9. Query transaction history
@@ -174,18 +174,17 @@ The `FullUserJourneyE2ETest.testCompleteUserJourney()` simulates a realistic ban
 
 **Validates**: All FR1-FR8 + complete observability
 
-### SAGA Compensation Test
+### Transfer Failure Atomicity Test
 
-`TransferE2ETest.testSagaCompensationLogic()` validates:
+`TransferE2ETest.testTransferFailureAtomicity()` validates:
 
 ```
 1. Attempt transfer to invalid account
-2. Verify SAGA compensation executed
-3. Verify source account balance unchanged
-4. Verify error has trace ID for debugging
+2. Verify source account balance unchanged
+3. Verify error has trace ID for debugging
 ```
 
-**Validates**: FR7 (SAGA compensation)
+**Validates**: FR7 (balance unchanged on failure)
 
 ### Idempotency Test
 
