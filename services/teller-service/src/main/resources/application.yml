@@ -1,0 +1,65 @@
+server:
+  port: ${SERVER_PORT:8083}
+
+spring:
+  application:
+    name: teller-service
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+# Account Service Configuration
+account:
+  service:
+    url: ${ACCOUNT_SERVICE_URL:http://account-service:8081}
+
+# Transaction Service Configuration
+transaction:
+  service:
+    url: ${TRANSACTION_SERVICE_URL:http://transaction-service:8082}
+
+# OpenTelemetry Configuration
+otel:
+  service:
+    name: ${OTEL_SERVICE_NAME:teller-service}
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}
+
+# Actuator Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    com.litebank.tellerservice: DEBUG
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# SpringDoc OpenAPI / Swagger UI Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: alpha
+  info:
+    title: Teller Service API
+    version: 1.0.0
+    description: Teller service (transfer + deposit + withdrawal) for LiteBank Demo
