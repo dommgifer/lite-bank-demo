@@ -45,10 +45,8 @@ jobs:
               - 'services/transaction-service/**'
             exchange-rate-service:
               - 'services/exchange-rate-service/**'
-            transfer-service:
-              - 'services/transfer-service/**'
-            deposit-withdrawal-service:
-              - 'services/deposit-withdrawal-service/**'
+            teller-service:
+              - 'services/teller-service/**'
             exchange-service:
               - 'services/exchange-service/**'
             analytics-processor-service:
@@ -66,8 +64,7 @@ jobs:
               - 'services/account-service/**'
               - 'services/transaction-service/**'
               - 'services/exchange-rate-service/**'
-              - 'services/transfer-service/**'
-              - 'services/deposit-withdrawal-service/**'
+              - 'services/teller-service/**'
               - 'services/exchange-service/**'
               - 'services/analytics-processor-service/**'
               - 'services/analytics-query-service/**'
@@ -90,11 +87,8 @@ jobs:
           if [ "${{ steps.filter.outputs.exchange-rate-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
             SERVICES+=("exchange-rate-service")
           fi
-          if [ "${{ steps.filter.outputs.transfer-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
-            SERVICES+=("transfer-service")
-          fi
-          if [ "${{ steps.filter.outputs.deposit-withdrawal-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
-            SERVICES+=("deposit-withdrawal-service")
+          if [ "${{ steps.filter.outputs.teller-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
+            SERVICES+=("teller-service")
           fi
           if [ "${{ steps.filter.outputs.exchange-service }}" == "true" ] || [ "${{ github.event.inputs.build_all }}" == "true" ]; then
             SERVICES+=("exchange-service")
