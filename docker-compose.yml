@@ -261,16 +261,17 @@ services:
     networks:
       - litebank
 
-  transfer-service:
+  # Teller Service (Spring Boot) - Transfer + Deposit + Withdrawal orchestration
+  teller-service:
     build:
-      context: ./services/transfer-service
+      context: ./services/teller-service
       dockerfile: Dockerfile
-    container_name: litebank-transfer-service
+    container_name: litebank-teller-service
     environment:
       ACCOUNT_SERVICE_URL: http://account-service:8081
       TRANSACTION_SERVICE_URL: http://transaction-service:8082
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      OTEL_SERVICE_NAME: transfer-service
+      OTEL_SERVICE_NAME: teller-service
       OTEL_RESOURCE_ATTRIBUTES: "service.namespace=lite-bank-demo"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       ENVIRONMENT: local
@@ -314,41 +315,6 @@ services:
         condition: service_started
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8084/actuator/health"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 40s
-    networks:
-      - litebank
-
-  # Deposit Withdrawal Service (Spring Boot) - Handles deposit and withdrawal operations
-  deposit-withdrawal-service:
-    build:
-      context: ./services/deposit-withdrawal-service
-      dockerfile: Dockerfile
-    container_name: litebank-deposit-withdrawal-service
-    environment:
-      ACCOUNT_SERVICE_URL: http://account-service:8081
-      TRANSACTION_SERVICE_URL: http://transaction-service:8082
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      OTEL_SERVICE_NAME: deposit-withdrawal-service
-      OTEL_RESOURCE_ATTRIBUTES: "service.namespace=lite-bank-demo"
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
-      ENVIRONMENT: local
-      SERVER_PORT: 8086
-    ports:
-      - "8086:8086"
-    depends_on:
-      account-service:
-        condition: service_healthy
-      transaction-service:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      otel-collector:
-        condition: service_started
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8086/actuator/health"]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -422,13 +388,11 @@ services:
         condition: service_healthy
       transaction-service:
         condition: service_healthy
-      transfer-service:
+      teller-service:
         condition: service_healthy
       exchange-rate-service:
         condition: service_healthy
       exchange-service:
-        condition: service_healthy
-      deposit-withdrawal-service:
         condition: service_healthy
       otel-collector:
         condition: service_started
