@@ -5,6 +5,7 @@ import com.litebank.tellerservice.dto.WithdrawalRequest;
 import com.litebank.tellerservice.dto.WithdrawalResponse;
 import com.litebank.tellerservice.service.WithdrawalService;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
 import jakarta.validation.Valid;
@@ -28,6 +29,7 @@ public class WithdrawalController {
             @RequestHeader(value = "X-User-ID", required = false) String userId,
             @Valid @RequestBody WithdrawalRequest request) {
         Span span = tracer.spanBuilder("POST /api/v1/withdrawals")
+                .setSpanKind(SpanKind.SERVER)
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {

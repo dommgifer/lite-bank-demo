@@ -5,6 +5,7 @@ import com.litebank.tellerservice.dto.DepositRequest;
 import com.litebank.tellerservice.dto.DepositResponse;
 import com.litebank.tellerservice.service.DepositService;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
 import jakarta.validation.Valid;
@@ -28,6 +29,7 @@ public class DepositController {
             @RequestHeader(value = "X-User-ID", required = false) String userId,
             @Valid @RequestBody DepositRequest request) {
         Span span = tracer.spanBuilder("POST /api/v1/deposits")
+                .setSpanKind(SpanKind.SERVER)
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {

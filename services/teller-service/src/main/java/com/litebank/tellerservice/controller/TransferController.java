@@ -5,6 +5,7 @@ import com.litebank.tellerservice.dto.TransferRequest;
 import com.litebank.tellerservice.dto.TransferResponse;
 import com.litebank.tellerservice.service.TransferService;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
 import jakarta.validation.Valid;
@@ -26,9 +27,13 @@ public class TransferController {
             @RequestHeader(value = "X-User-ID", required = false) String userId,
             @Valid @RequestBody TransferRequest request
     ) {
-        Span span = tracer.spanBuilder("POST /api/v1/transfers").startSpan();
+        Span span = tracer.spanBuilder("POST /api/v1/transfers")
+                .setSpanKind(SpanKind.SERVER)
+                .startSpan();
         try (Scope scope = span.makeCurrent()) {
             String traceId = span.getSpanContext().getTraceId();
+            span.setAttribute("http.method", "POST");
+            span.setAttribute("http.route", "/api/v1/transfers");
             span.setAttribute("from.account.id", request.getFromAccountId());
             span.setAttribute("to.account.id", request.getToAccountId());
             span.setAttribute("amount", request.getAmount().toString());
