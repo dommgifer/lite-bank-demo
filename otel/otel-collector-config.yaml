@@ -21,7 +21,7 @@ connectors:
     dimensions:
       - name: http.method
         default: GET
-      - name: http.status_code
+      - name: http.response.status_code
       - name: http.route
     exemplars:
       enabled: true
