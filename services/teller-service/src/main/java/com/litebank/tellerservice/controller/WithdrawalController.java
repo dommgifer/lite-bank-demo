@@ -5,9 +5,6 @@ import com.litebank.tellerservice.dto.WithdrawalRequest;
 import com.litebank.tellerservice.dto.WithdrawalResponse;
 import com.litebank.tellerservice.service.WithdrawalService;
 import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Scope;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,36 +19,25 @@ import org.springframework.web.bind.annotation.*;
 public class WithdrawalController {
 
     private final WithdrawalService withdrawalService;
-    private final Tracer tracer;
 
     @PostMapping
     public ResponseEntity<ApiResponse<WithdrawalResponse>> withdraw(
             @RequestHeader(value = "X-User-ID", required = false) String userId,
             @Valid @RequestBody WithdrawalRequest request) {
-        Span span = tracer.spanBuilder("POST /api/v1/withdrawals")
-                .setSpanKind(SpanKind.SERVER)
-                .startSpan();
 
-        try (Scope scope = span.makeCurrent()) {
-            span.setAttribute("http.method", "POST");
-            span.setAttribute("http.route", "/api/v1/withdrawals");
-            span.setAttribute("account.id", request.getAccountId());
-            span.setAttribute("amount", request.getAmount().toString());
-            span.setAttribute("currency", request.getCurrency());
-            if (userId != null) {
-                span.setAttribute("user.id", userId);
-            }
-
-            WithdrawalResponse response = withdrawalService.executeWithdrawal(request, userId);
-
-            String traceId = span.getSpanContext().getTraceId();
-
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .header("X-Trace-Id", traceId)
-                    .body(ApiResponse.success(response, traceId));
-
-        } finally {
-            span.end();
+        Span.current().setAttribute("http.route", "/api/v1/withdrawals");
+        Span.current().setAttribute("account.id", request.getAccountId());
+        Span.current().setAttribute("amount", request.getAmount().toString());
+        Span.current().setAttribute("currency", request.getCurrency());
+        if (userId != null) {
+            Span.current().setAttribute("user.id", userId);
         }
+
+        WithdrawalResponse response = withdrawalService.executeWithdrawal(request, userId);
+
+        String traceId = Span.current().getSpanContext().getTraceId();
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, traceId));
     }
 }

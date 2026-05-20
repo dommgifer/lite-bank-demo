@@ -7,8 +7,6 @@ import com.litebank.userservice.dto.RegisterRequest;
 import com.litebank.userservice.dto.RegisterResponse;
 import com.litebank.userservice.service.AuthService;
 import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Scope;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,57 +21,31 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final Tracer tracer;
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
-        // Start OpenTelemetry span
-        Span span = tracer.spanBuilder("POST /api/v1/auth/login")
-                .startSpan();
+        Span.current().setAttribute("http.route", "/api/v1/auth/login");
+        Span.current().setAttribute("user.username", request.getUsername());
 
-        try (Scope scope = span.makeCurrent()) {
-            // Add span attributes
-            span.setAttribute("http.method", "POST");
-            span.setAttribute("http.route", "/api/v1/auth/login");
-            span.setAttribute("user.username", request.getUsername());
+        LoginResponse response = authService.login(request);
 
-            // Call service
-            LoginResponse response = authService.login(request);
+        String traceId = Span.current().getSpanContext().getTraceId();
 
-            // Get trace ID for response
-            String traceId = span.getSpanContext().getTraceId();
-
-            // Return success response with X-Trace-Id header
-            return ResponseEntity.ok()
-                    .header("X-Trace-Id", traceId)
-                    .body(ApiResponse.success(response, traceId));
-
-        } finally {
-            span.end();
-        }
+        return ResponseEntity.ok()
+                .body(ApiResponse.success(response, traceId));
     }
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<RegisterResponse>> register(@Valid @RequestBody RegisterRequest request) {
-        Span span = tracer.spanBuilder("POST /api/v1/auth/register")
-                .startSpan();
+        Span.current().setAttribute("http.route", "/api/v1/auth/register");
+        Span.current().setAttribute("user.username", request.getUsername());
 
-        try (Scope scope = span.makeCurrent()) {
-            span.setAttribute("http.method", "POST");
-            span.setAttribute("http.route", "/api/v1/auth/register");
-            span.setAttribute("user.username", request.getUsername());
+        RegisterResponse response = authService.register(request);
 
-            RegisterResponse response = authService.register(request);
+        String traceId = Span.current().getSpanContext().getTraceId();
 
-            String traceId = span.getSpanContext().getTraceId();
-
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .header("X-Trace-Id", traceId)
-                    .body(ApiResponse.success(response, traceId));
-
-        } finally {
-            span.end();
-        }
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, traceId));
     }
 
 }

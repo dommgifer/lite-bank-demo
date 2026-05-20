@@ -4,8 +4,6 @@ import com.litebank.transactionservice.dto.*;
 import com.litebank.transactionservice.entity.Transaction;
 import com.litebank.transactionservice.service.TransactionService;
 import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Scope;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -14,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,22 +22,17 @@ import java.util.stream.Collectors;
 public class TransactionController {
 
     private final TransactionService transactionService;
-    private final Tracer tracer;
 
     @GetMapping("/{transactionId}")
     public ResponseEntity<ApiResponse<TransactionResponse>> getTransaction(@PathVariable Long transactionId) {
-        Span span = tracer.spanBuilder("GET /api/v1/transactions/{transactionId}").startSpan();
-        try (Scope scope = span.makeCurrent()) {
-            span.setAttribute("transaction.id", transactionId);
+        Span.current().setAttribute("http.route", "/api/v1/transactions/{transactionId}");
+        Span.current().setAttribute("transaction.id", transactionId);
 
-            Transaction transaction = transactionService.getTransactionById(transactionId);
-            TransactionResponse response = TransactionResponse.fromEntity(transaction);
+        Transaction transaction = transactionService.getTransactionById(transactionId);
+        TransactionResponse response = TransactionResponse.fromEntity(transaction);
 
-            String traceId = span.getSpanContext().getTraceId();
-            return ResponseEntity.ok(ApiResponse.success(response, traceId));
-        } finally {
-            span.end();
-        }
+        String traceId = Span.current().getSpanContext().getTraceId();
+        return ResponseEntity.ok(ApiResponse.success(response, traceId));
     }
 
     @GetMapping
@@ -53,73 +45,63 @@ public class TransactionController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Span span = tracer.spanBuilder("GET /api/v1/transactions").startSpan();
-        try (Scope scope = span.makeCurrent()) {
-            TransactionQueryParams params = TransactionQueryParams.builder()
-                    .accountId(accountId)
-                    .transactionType(transactionType)
-                    .startDate(startDate)
-                    .endDate(endDate)
-                    .referenceId(referenceId)
-                    .page(page)
-                    .size(size)
-                    .build();
+        Span.current().setAttribute("http.route", "/api/v1/transactions");
 
-            Page<Transaction> transactionPage = transactionService.queryTransactions(params);
-            List<TransactionResponse> content = transactionPage.getContent().stream()
-                    .map(TransactionResponse::fromEntity)
-                    .collect(Collectors.toList());
+        TransactionQueryParams params = TransactionQueryParams.builder()
+                .accountId(accountId)
+                .transactionType(transactionType)
+                .startDate(startDate)
+                .endDate(endDate)
+                .referenceId(referenceId)
+                .page(page)
+                .size(size)
+                .build();
 
-            PageResponse<TransactionResponse> pageResponse = new PageResponse<>(
-                    content,
-                    transactionPage.getNumber(),
-                    transactionPage.getSize(),
-                    transactionPage.getTotalElements(),
-                    transactionPage.getTotalPages()
-            );
+        Page<Transaction> transactionPage = transactionService.queryTransactions(params);
+        List<TransactionResponse> content = transactionPage.getContent().stream()
+                .map(TransactionResponse::fromEntity)
+                .collect(Collectors.toList());
 
-            String traceId = span.getSpanContext().getTraceId();
-            return ResponseEntity.ok(ApiResponse.success(pageResponse, traceId));
-        } finally {
-            span.end();
-        }
+        PageResponse<TransactionResponse> pageResponse = new PageResponse<>(
+                content,
+                transactionPage.getNumber(),
+                transactionPage.getSize(),
+                transactionPage.getTotalElements(),
+                transactionPage.getTotalPages()
+        );
+
+        String traceId = Span.current().getSpanContext().getTraceId();
+        return ResponseEntity.ok(ApiResponse.success(pageResponse, traceId));
     }
 
     @GetMapping("/trace/{traceId}")
     public ResponseEntity<ApiResponse<List<TransactionResponse>>> getTransactionsByTraceId(@PathVariable String traceId) {
-        Span span = tracer.spanBuilder("GET /api/v1/transactions/trace/{traceId}").startSpan();
-        try (Scope scope = span.makeCurrent()) {
-            span.setAttribute("trace.id", traceId);
+        Span.current().setAttribute("http.route", "/api/v1/transactions/trace/{traceId}");
+        Span.current().setAttribute("trace.id", traceId);
 
-            List<Transaction> transactions = transactionService.getTransactionsByTraceId(traceId);
-            List<TransactionResponse> response = transactions.stream()
-                    .map(TransactionResponse::fromEntity)
-                    .collect(Collectors.toList());
+        List<Transaction> transactions = transactionService.getTransactionsByTraceId(traceId);
+        List<TransactionResponse> response = transactions.stream()
+                .map(TransactionResponse::fromEntity)
+                .collect(Collectors.toList());
 
-            String currentTraceId = span.getSpanContext().getTraceId();
-            return ResponseEntity.ok(ApiResponse.success(response, currentTraceId));
-        } finally {
-            span.end();
-        }
+        String currentTraceId = Span.current().getSpanContext().getTraceId();
+        return ResponseEntity.ok(ApiResponse.success(response, currentTraceId));
     }
 
     @PostMapping
     public ResponseEntity<ApiResponse<TransactionResponse>> createTransaction(
             @Valid @RequestBody CreateTransactionRequest request
     ) {
-        Span span = tracer.spanBuilder("POST /api/v1/transactions").startSpan();
-        try (Scope scope = span.makeCurrent()) {
-            String traceId = span.getSpanContext().getTraceId();
+        Span.current().setAttribute("http.route", "/api/v1/transactions");
 
-            Transaction transaction = transactionService.createTransaction(request, traceId);
-            TransactionResponse response = TransactionResponse.fromEntity(transaction);
+        String traceId = Span.current().getSpanContext().getTraceId();
 
-            return ResponseEntity
-                    .status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(response, traceId));
-        } finally {
-            span.end();
-        }
+        Transaction transaction = transactionService.createTransaction(request, traceId);
+        TransactionResponse response = TransactionResponse.fromEntity(transaction);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, traceId));
     }
 
     /**
@@ -130,19 +112,16 @@ public class TransactionController {
     public ResponseEntity<ApiResponse<TransactionResponse>> credit(
             @Valid @RequestBody CreditRequest request
     ) {
-        Span span = tracer.spanBuilder("POST /api/v1/transactions/credit").startSpan();
-        try (Scope scope = span.makeCurrent()) {
-            String traceId = span.getSpanContext().getTraceId();
+        Span.current().setAttribute("http.route", "/api/v1/transactions/credit");
 
-            Transaction transaction = transactionService.credit(request, traceId);
-            TransactionResponse response = TransactionResponse.fromEntity(transaction);
+        String traceId = Span.current().getSpanContext().getTraceId();
 
-            return ResponseEntity
-                    .status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(response, traceId));
-        } finally {
-            span.end();
-        }
+        Transaction transaction = transactionService.credit(request, traceId);
+        TransactionResponse response = TransactionResponse.fromEntity(transaction);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, traceId));
     }
 
     /**
@@ -153,19 +132,16 @@ public class TransactionController {
     public ResponseEntity<ApiResponse<TransactionResponse>> debit(
             @Valid @RequestBody DebitRequest request
     ) {
-        Span span = tracer.spanBuilder("POST /api/v1/transactions/debit").startSpan();
-        try (Scope scope = span.makeCurrent()) {
-            String traceId = span.getSpanContext().getTraceId();
+        Span.current().setAttribute("http.route", "/api/v1/transactions/debit");
 
-            Transaction transaction = transactionService.debit(request, traceId);
-            TransactionResponse response = TransactionResponse.fromEntity(transaction);
+        String traceId = Span.current().getSpanContext().getTraceId();
 
-            return ResponseEntity
-                    .status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(response, traceId));
-        } finally {
-            span.end();
-        }
+        Transaction transaction = transactionService.debit(request, traceId);
+        TransactionResponse response = TransactionResponse.fromEntity(transaction);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, traceId));
     }
 
     /**
@@ -176,34 +152,31 @@ public class TransactionController {
     public ResponseEntity<ApiResponse<TransferResponse>> transfer(
             @Valid @RequestBody TransferRequest request
     ) {
-        Span span = tracer.spanBuilder("POST /api/v1/transactions/transfer").startSpan();
-        try (Scope scope = span.makeCurrent()) {
-            String traceId = span.getSpanContext().getTraceId();
+        Span.current().setAttribute("http.route", "/api/v1/transactions/transfer");
 
-            List<Transaction> transactions = transactionService.transfer(request, traceId);
+        String traceId = Span.current().getSpanContext().getTraceId();
 
-            // transactions[0] is source (OUT), transactions[1] is destination (IN)
-            TransferResponse response = TransferResponse.builder()
-                    .sourceTransactionId(transactions.get(0).getTransactionId())
-                    .destinationTransactionId(transactions.get(1).getTransactionId())
-                    .sourceAccountId(request.getSourceAccountId())
-                    .destinationAccountId(request.getDestinationAccountId())
-                    .amount(request.getAmount())
-                    .currency(request.getCurrency())
-                    .sourceBalanceAfter(transactions.get(0).getBalanceAfter())
-                    .destinationBalanceAfter(transactions.get(1).getBalanceAfter())
-                    .referenceId(request.getReferenceId())
-                    .description(request.getDescription())
-                    .traceId(traceId)
-                    .createdAt(transactions.get(0).getCreatedAt())
-                    .build();
+        List<Transaction> transactions = transactionService.transfer(request, traceId);
 
-            return ResponseEntity
-                    .status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(response, traceId));
-        } finally {
-            span.end();
-        }
+        // transactions[0] is source (OUT), transactions[1] is destination (IN)
+        TransferResponse response = TransferResponse.builder()
+                .sourceTransactionId(transactions.get(0).getTransactionId())
+                .destinationTransactionId(transactions.get(1).getTransactionId())
+                .sourceAccountId(request.getSourceAccountId())
+                .destinationAccountId(request.getDestinationAccountId())
+                .amount(request.getAmount())
+                .currency(request.getCurrency())
+                .sourceBalanceAfter(transactions.get(0).getBalanceAfter())
+                .destinationBalanceAfter(transactions.get(1).getBalanceAfter())
+                .referenceId(request.getReferenceId())
+                .description(request.getDescription())
+                .traceId(traceId)
+                .createdAt(transactions.get(0).getCreatedAt())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, traceId));
     }
 
     /**
@@ -214,37 +187,34 @@ public class TransactionController {
     public ResponseEntity<ApiResponse<ExchangeResponse>> exchange(
             @Valid @RequestBody ExchangeRequest request
     ) {
-        Span span = tracer.spanBuilder("POST /api/v1/transactions/exchange").startSpan();
-        try (Scope scope = span.makeCurrent()) {
-            String traceId = span.getSpanContext().getTraceId();
+        Span.current().setAttribute("http.route", "/api/v1/transactions/exchange");
 
-            List<Transaction> transactions = transactionService.exchange(request, traceId);
+        String traceId = Span.current().getSpanContext().getTraceId();
 
-            // transactions[0] is source (OUT), transactions[1] is destination (IN)
-            ExchangeResponse response = ExchangeResponse.builder()
-                    .sourceTransactionId(transactions.get(0).getTransactionId())
-                    .destinationTransactionId(transactions.get(1).getTransactionId())
-                    .sourceAccountId(request.getSourceAccountId())
-                    .destinationAccountId(request.getDestinationAccountId())
-                    .sourceAmount(request.getSourceAmount())
-                    .sourceCurrency(request.getSourceCurrency())
-                    .destinationAmount(request.getDestinationAmount())
-                    .destinationCurrency(request.getDestinationCurrency())
-                    .exchangeRate(request.getExchangeRate())
-                    .sourceBalanceAfter(transactions.get(0).getBalanceAfter())
-                    .destinationBalanceAfter(transactions.get(1).getBalanceAfter())
-                    .referenceId(request.getReferenceId())
-                    .description(request.getDescription())
-                    .traceId(traceId)
-                    .createdAt(transactions.get(0).getCreatedAt())
-                    .build();
+        List<Transaction> transactions = transactionService.exchange(request, traceId);
 
-            return ResponseEntity
-                    .status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(response, traceId));
-        } finally {
-            span.end();
-        }
+        // transactions[0] is source (OUT), transactions[1] is destination (IN)
+        ExchangeResponse response = ExchangeResponse.builder()
+                .sourceTransactionId(transactions.get(0).getTransactionId())
+                .destinationTransactionId(transactions.get(1).getTransactionId())
+                .sourceAccountId(request.getSourceAccountId())
+                .destinationAccountId(request.getDestinationAccountId())
+                .sourceAmount(request.getSourceAmount())
+                .sourceCurrency(request.getSourceCurrency())
+                .destinationAmount(request.getDestinationAmount())
+                .destinationCurrency(request.getDestinationCurrency())
+                .exchangeRate(request.getExchangeRate())
+                .sourceBalanceAfter(transactions.get(0).getBalanceAfter())
+                .destinationBalanceAfter(transactions.get(1).getBalanceAfter())
+                .referenceId(request.getReferenceId())
+                .description(request.getDescription())
+                .traceId(traceId)
+                .createdAt(transactions.get(0).getCreatedAt())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, traceId));
     }
 
     record HealthStatus(String status, String timestamp, String service) {}

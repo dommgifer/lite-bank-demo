@@ -3,6 +3,9 @@ package com.litebank.tellerservice.config;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.TextMapGetter;
@@ -12,6 +15,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -29,6 +33,7 @@ import java.util.Collections;
 public class TracingFilter implements Filter {
 
     private final OpenTelemetry openTelemetry;
+    private final Tracer tracer;
 
     private static final TextMapGetter<HttpServletRequest> GETTER = new TextMapGetter<>() {
         @Override
@@ -51,28 +56,45 @@ public class TracingFilter implements Filter {
             return;
         }
 
+        HttpServletResponse httpResponse = (HttpServletResponse) response;
+
         Context extractedContext = openTelemetry.getPropagators()
                 .getTextMapPropagator()
                 .extract(Context.current(), httpRequest, GETTER);
 
-        String traceparent = httpRequest.getHeader("traceparent");
-        if (traceparent != null) {
-            log.debug("Extracted traceparent: {}", traceparent);
-        }
+        Span span = tracer.spanBuilder(httpRequest.getMethod() + " " + httpRequest.getRequestURI())
+                .setParent(extractedContext)
+                .setSpanKind(SpanKind.SERVER)
+                .startSpan();
 
-        try (Scope scope = extractedContext.makeCurrent()) {
-            SpanContext spanContext = Span.current().getSpanContext();
+        try (Scope scope = span.makeCurrent()) {
+            span.setAttribute("http.request.method", httpRequest.getMethod());
+            span.setAttribute("url.path", httpRequest.getRequestURI());
+
+            SpanContext spanContext = span.getSpanContext();
             if (spanContext.isValid()) {
+                httpResponse.setHeader("X-Trace-Id", spanContext.getTraceId());
                 MDC.put("traceId", spanContext.getTraceId());
                 MDC.put("spanId", spanContext.getSpanId());
             }
 
             try {
                 chain.doFilter(request, response);
+                int statusCode = httpResponse.getStatus();
+                span.setAttribute("http.response.status_code", statusCode);
+                if (statusCode >= 500) {
+                    span.setStatus(StatusCode.ERROR);
+                }
+            } catch (Exception e) {
+                span.recordException(e);
+                span.setStatus(StatusCode.ERROR, e.getMessage());
+                throw e;
             } finally {
                 MDC.remove("traceId");
                 MDC.remove("spanId");
             }
+        } finally {
+            span.end();
         }
     }
 }
