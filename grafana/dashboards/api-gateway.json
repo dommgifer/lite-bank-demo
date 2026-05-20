@@ -85,7 +85,7 @@
       },
       "targets": [
         {
-          "expr": "(sum(rate(litebank_calls_total{service_name=\"api-gateway\", status_code=~\"5..\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"api-gateway\"}[5m]))) * 100",
+          "expr": "(sum(rate(litebank_calls_total{service_name=\"api-gateway\", http_response_status_code=~\"5..\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"api-gateway\"}[5m]))) * 100",
           "legendFormat": "Error %"
         }
       ]
@@ -250,7 +250,7 @@
           "legendFormat": "Successful (200)"
         },
         {
-          "expr": "sum(rate(litebank_calls_total{service_name=\"api-gateway\", status_code=~\"[45]..\"}[1m]))",
+          "expr": "sum(rate(litebank_calls_total{service_name=\"api-gateway\", http_response_status_code=~\"[45]..\"}[1m]))",
           "legendFormat": "Errors (4xx/5xx)"
         }
       ]
@@ -406,7 +406,7 @@
       },
       "targets": [
         {
-          "expr": "(sum(rate(litebank_calls_total{service_name=\"api-gateway\", status_code=~\"[45]..\"}[5m])) by (http_route) / sum(rate(litebank_calls_total{service_name=\"api-gateway\"}[5m])) by (http_route)) * 100",
+          "expr": "(sum(rate(litebank_calls_total{service_name=\"api-gateway\", http_response_status_code=~\"[45]..\"}[5m])) by (http_route) / sum(rate(litebank_calls_total{service_name=\"api-gateway\"}[5m])) by (http_route)) * 100",
           "legendFormat": "{{http_route}}"
         }
       ]
@@ -440,7 +440,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(litebank_calls_total{service_name=\"api-gateway\"}[1h])) by (status_code)",
+          "expr": "sum(increase(litebank_calls_total{service_name=\"api-gateway\"}[1h])) by (http_response_status_code)",
           "legendFormat": "{{status_code}}"
         }
       ]
@@ -470,7 +470,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(litebank_calls_total{service_name=\"api-gateway\", status_code=~\"[45]..\"}[5m])) by (status_code)",
+          "expr": "sum(increase(litebank_calls_total{service_name=\"api-gateway\", http_response_status_code=~\"[45]..\"}[5m])) by (http_response_status_code)",
           "legendFormat": "{{status_code}}"
         }
       ]
@@ -618,7 +618,7 @@
           "instant": true
         },
         {
-          "expr": "(sum(rate(litebank_calls_total{service_name=\"api-gateway\", status_code=~\"[45]..\"}[5m])) by (http_route, http_method) / sum(rate(litebank_calls_total{service_name=\"api-gateway\"}[5m])) by (http_route, http_method)) * 100",
+          "expr": "(sum(rate(litebank_calls_total{service_name=\"api-gateway\", http_response_status_code=~\"[45]..\"}[5m])) by (http_route, http_method) / sum(rate(litebank_calls_total{service_name=\"api-gateway\"}[5m])) by (http_route, http_method)) * 100",
           "refId": "Error",
           "format": "table",
           "instant": true

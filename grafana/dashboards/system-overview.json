@@ -78,7 +78,7 @@
       },
       "targets": [
         {
-          "expr": "(sum(rate(litebank_calls_total{status_code=~\"5..\"}[5m])) / sum(rate(litebank_calls_total[5m]))) * 100",
+          "expr": "(sum(rate(litebank_calls_total{http_response_status_code=~\"5..\"}[5m])) / sum(rate(litebank_calls_total[5m]))) * 100",
           "legendFormat": "Error %"
         }
       ]
@@ -258,7 +258,7 @@
       },
       "targets": [
         {
-          "expr": "(sum(rate(litebank_calls_total{status_code=~\"5..\"}[5m])) by (service_name) / sum(rate(litebank_calls_total[5m])) by (service_name)) * 100",
+          "expr": "(sum(rate(litebank_calls_total{http_response_status_code=~\"5..\"}[5m])) by (service_name) / sum(rate(litebank_calls_total[5m])) by (service_name)) * 100",
           "legendFormat": "{{service_name}}"
         }
       ]
@@ -369,7 +369,7 @@
           "instant": true
         },
         {
-          "expr": "(sum(rate(litebank_calls_total{status_code=~\"5..\"}[5m])) by (service_name) / sum(rate(litebank_calls_total[5m])) by (service_name)) * 100",
+          "expr": "(sum(rate(litebank_calls_total{http_response_status_code=~\"5..\"}[5m])) by (service_name) / sum(rate(litebank_calls_total[5m])) by (service_name)) * 100",
           "legendFormat": "{{service_name}}",
           "refId": "Error",
           "format": "table",
@@ -430,7 +430,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(litebank_calls_total[1h])) by (status_code)",
+          "expr": "sum(increase(litebank_calls_total[1h])) by (http_response_status_code)",
           "legendFormat": "{{status_code}}"
         }
       ]

@@ -93,7 +93,7 @@
       },
       "targets": [
         {
-          "expr": "(sum(rate(litebank_calls_total{service_name=\"$service\", status_code=~\"5..\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"$service\"}[5m]))) * 100",
+          "expr": "(sum(rate(litebank_calls_total{service_name=\"$service\", http_response_status_code=~\"5..\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"$service\"}[5m]))) * 100",
           "legendFormat": "Error %"
         }
       ]
@@ -336,11 +336,11 @@
       },
       "targets": [
         {
-          "expr": "(sum(rate(litebank_calls_total{service_name=\"$service\", status_code=~\"5..\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"$service\"}[5m]))) * 100",
+          "expr": "(sum(rate(litebank_calls_total{service_name=\"$service\", http_response_status_code=~\"5..\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"$service\"}[5m]))) * 100",
           "legendFormat": "5xx Error %"
         },
         {
-          "expr": "(sum(rate(litebank_calls_total{service_name=\"$service\", status_code=~\"4..\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"$service\"}[5m]))) * 100",
+          "expr": "(sum(rate(litebank_calls_total{service_name=\"$service\", http_response_status_code=~\"4..\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"$service\"}[5m]))) * 100",
           "legendFormat": "4xx Error %"
         }
       ]
@@ -365,7 +365,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(litebank_calls_total{service_name=\"$service\", status_code=~\"[45]..\"}[5m])) by (status_code)",
+          "expr": "sum(increase(litebank_calls_total{service_name=\"$service\", http_response_status_code=~\"[45]..\"}[5m])) by (http_response_status_code)",
           "legendFormat": "{{status_code}}"
         }
       ]
@@ -396,7 +396,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(litebank_calls_total{service_name=\"$service\"}[1h])) by (status_code)",
+          "expr": "sum(increase(litebank_calls_total{service_name=\"$service\"}[1h])) by (http_response_status_code)",
           "legendFormat": "{{status_code}}"
         }
       ]
