@@ -1,0 +1,5 @@
+# Account Service - Account queries (READ-ONLY)
+{{- $ctx := dict "name" "account-service" "config" .Values.services.accountService "root" . "needsDb" true "needsKafka" false "needsJwt" false }}
+{{ include "litebank.deployment" $ctx }}
+---
+{{ include "litebank.service" $ctx }}

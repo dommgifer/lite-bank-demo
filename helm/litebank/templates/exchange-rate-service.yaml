@@ -1,0 +1,5 @@
+# Exchange Rate Service - Currency rates (stateless)
+{{- $ctx := dict "name" "exchange-rate-service" "config" .Values.services.exchangeRateService "root" . "needsDb" false "needsKafka" false "needsJwt" false }}
+{{ include "litebank.deployment" $ctx }}
+---
+{{ include "litebank.service" $ctx }}

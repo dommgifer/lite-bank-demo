@@ -1,0 +1,5 @@
+# Analytics Processor Service - Kafka consumer, processes transaction events
+{{- $ctx := dict "name" "analytics-processor-service" "config" .Values.services.analyticsProcessor "root" . "needsDb" true "needsKafka" true "needsJwt" false }}
+{{ include "litebank.deployment" $ctx }}
+---
+{{ include "litebank.service" $ctx }}

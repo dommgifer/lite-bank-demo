@@ -1,0 +1,10 @@
+# Exchange Service - Currency exchange orchestration (Coordination Layer)
+{{- $extraEnv := list
+  (dict "name" "ACCOUNT_SERVICE_URL" "value" "http://account-service:8081")
+  (dict "name" "TRANSACTION_SERVICE_URL" "value" "http://transaction-service:8082")
+  (dict "name" "EXCHANGE_RATE_SERVICE_URL" "value" "http://exchange-rate-service:8084")
+}}
+{{- $ctx := dict "name" "exchange-service" "config" .Values.services.exchangeService "root" . "needsDb" false "needsKafka" true "needsJwt" false "extraEnv" $extraEnv }}
+{{ include "litebank.deployment" $ctx }}
+---
+{{ include "litebank.service" $ctx }}

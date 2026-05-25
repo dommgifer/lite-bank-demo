@@ -1,0 +1,5 @@
+# Analytics Query Service - REST API for analytics queries
+{{- $ctx := dict "name" "analytics-query-service" "config" .Values.services.analyticsQuery "root" . "needsDb" true "needsKafka" false "needsJwt" false }}
+{{ include "litebank.deployment" $ctx }}
+---
+{{ include "litebank.service" $ctx }}

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litebank-config
+  labels:
+    {{- include "litebank.labels" . | nindent 4 }}
+data:
+  # Database
+  DB_HOST: {{ include "litebank.postgresHost" . | quote }}
+  DB_PORT: {{ include "litebank.postgresPort" . | quote }}
+  DB_NAME: {{ .Values.infrastructure.postgres.database | quote }}
+  DB_USER: {{ .Values.infrastructure.postgres.user | quote }}
+
+  # Kafka
+  KAFKA_BOOTSTRAP_SERVERS: {{ include "litebank.kafkaServers" . | quote }}
+
+  # OpenTelemetry
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ include "litebank.otelEndpoint" . | quote }}
+
+  # Service URLs (for coordination layer)
+  ACCOUNT_SERVICE_URL: "http://account-service:8081"
+  TRANSACTION_SERVICE_URL: "http://transaction-service:8082"
+  EXCHANGE_RATE_SERVICE_URL: "http://exchange-rate-service:8084"

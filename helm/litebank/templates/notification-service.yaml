@@ -1,0 +1,10 @@
+# Notification Service - Kafka consumer, SSE-based real-time notifications
+{{- $extraEnv := list
+  (dict "name" "SPRING_DATASOURCE_URL" "value" (printf "jdbc:postgresql://%s:%s/%s" (include "litebank.postgresHost" .) (include "litebank.postgresPort" .) .Values.infrastructure.postgres.database))
+  (dict "name" "SPRING_DATASOURCE_USERNAME" "value" .Values.infrastructure.postgres.user)
+  (dict "name" "SPRING_DATASOURCE_PASSWORD" "valueFrom" (dict "secretKeyRef" (dict "name" "litebank-secrets" "key" "db-password")))
+}}
+{{- $ctx := dict "name" "notification-service" "config" .Values.services.notificationService "root" . "needsDb" true "needsKafka" true "needsJwt" false "extraEnv" $extraEnv }}
+{{ include "litebank.deployment" $ctx }}
+---
+{{ include "litebank.service" $ctx }}

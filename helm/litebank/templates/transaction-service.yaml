@@ -1,0 +1,5 @@
+# Transaction Service - ONLY service that modifies account balances
+{{- $ctx := dict "name" "transaction-service" "config" .Values.services.transactionService "root" . "needsDb" true "needsKafka" true "needsJwt" false }}
+{{ include "litebank.deployment" $ctx }}
+---
+{{ include "litebank.service" $ctx }}

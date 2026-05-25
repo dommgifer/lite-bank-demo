@@ -1,0 +1,15 @@
+apiVersion: v2
+name: litebank
+description: Lite Bank Demo - Microservices Banking System with SAGA Pattern
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - microservices
+  - banking
+  - saga
+  - opentelemetry
+
+maintainers:
+  - name: LiteBank Team

@@ -1,0 +1,103 @@
+# API Gateway - Spring Cloud Gateway with JWT validation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  labels:
+    {{- include "litebank.labels" . | nindent 4 }}
+    app.kubernetes.io/name: api-gateway
+spec:
+  replicas: {{ .Values.services.apiGateway.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api-gateway
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: api-gateway
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: api-gateway
+          image: "{{ .Values.global.imageRegistry }}{{ .Values.services.apiGateway.image }}"
+          imagePullPolicy: {{ .Values.services.common.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.services.apiGateway.port }}
+              protocol: TCP
+          env:
+            - name: SERVER_PORT
+              value: {{ .Values.services.apiGateway.port | quote }}
+            - name: JAVA_TOOL_OPTIONS
+              value: "-javaagent:/otel/javaagent.jar"
+            - name: OTEL_SERVICE_NAME
+              value: "api-gateway"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.namespace={{ .Release.Namespace }}"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ include "litebank.otelEndpoint" . }}
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_PROPAGATORS
+              value: "tracecontext,baggage"
+            - name: OTEL_TRACES_SAMPLER
+              value: "always_on"
+            - name: OTEL_LOGS_EXPORTER
+              value: "none"  # Alloy 已透過 loki.source.kubernetes 收集容器 logs
+            - name: OTEL_METRICS_EXPORTER
+              value: "none"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: litebank-secrets
+                  key: jwt-secret
+            - name: SPRING_PROFILES_ACTIVE
+              value: "kubernetes"
+            - name: JAVA_OPTS
+              value: "-Xms512m -Xmx1024m"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  labels:
+    {{- include "litebank.labels" . | nindent 4 }}
+    app.kubernetes.io/name: api-gateway
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.services.apiGateway.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: api-gateway
+    app.kubernetes.io/instance: {{ .Release.Name }}

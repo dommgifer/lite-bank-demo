@@ -114,14 +114,9 @@ services:
     replicas: 1
 
   # Coordination Layer
-  transferService:
-    image: transfer-service:latest
+  tellerService:
+    image: teller-service:latest
     port: 8083
-    replicas: 1
-
-  depositWithdrawalService:
-    image: deposit-withdrawal-service:latest
-    port: 8086
     replicas: 1
 
   exchangeService:

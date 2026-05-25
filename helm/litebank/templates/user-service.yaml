@@ -1,0 +1,5 @@
+# User Service - Authentication and JWT generation
+{{- $ctx := dict "name" "user-service" "config" .Values.services.userService "root" . "needsDb" true "needsKafka" false "needsJwt" true }}
+{{ include "litebank.deployment" $ctx }}
+---
+{{ include "litebank.service" $ctx }}
