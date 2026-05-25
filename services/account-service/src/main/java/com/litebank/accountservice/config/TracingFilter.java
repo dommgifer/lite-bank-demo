@@ -3,6 +3,9 @@ package com.litebank.accountservice.config;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.TextMapGetter;
@@ -23,10 +26,6 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.Collections;
 
-/**
- * Servlet Filter that extracts W3C Trace Context (traceparent header) from incoming HTTP requests
- * and sets it as the current context for proper trace propagation.
- */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RequiredArgsConstructor
@@ -34,6 +33,7 @@ import java.util.Collections;
 public class TracingFilter implements Filter {
 
     private final OpenTelemetry openTelemetry;
+    private final Tracer tracer;
 
     private static final TextMapGetter<HttpServletRequest> GETTER = new TextMapGetter<>() {
         @Override
@@ -56,33 +56,45 @@ public class TracingFilter implements Filter {
             return;
         }
 
-        // Extract trace context from incoming request headers
+        HttpServletResponse httpResponse = (HttpServletResponse) response;
+
         Context extractedContext = openTelemetry.getPropagators()
                 .getTextMapPropagator()
                 .extract(Context.current(), httpRequest, GETTER);
 
-        // Log for debugging
-        String traceparent = httpRequest.getHeader("traceparent");
-        if (traceparent != null) {
-            log.debug("Extracted traceparent: {}", traceparent);
-        }
+        Span span = tracer.spanBuilder(httpRequest.getMethod() + " " + httpRequest.getRequestURI())
+                .setParent(extractedContext)
+                .setSpanKind(SpanKind.SERVER)
+                .startSpan();
 
-        // Make the extracted context current for the duration of this request
-        try (Scope scope = extractedContext.makeCurrent()) {
-            // Put traceId and spanId into MDC for logging
-            SpanContext spanContext = Span.current().getSpanContext();
+        try (Scope scope = span.makeCurrent()) {
+            span.setAttribute("http.request.method", httpRequest.getMethod());
+            span.setAttribute("url.path", httpRequest.getRequestURI());
+
+            SpanContext spanContext = span.getSpanContext();
             if (spanContext.isValid()) {
+                httpResponse.setHeader("X-Trace-Id", spanContext.getTraceId());
                 MDC.put("traceId", spanContext.getTraceId());
                 MDC.put("spanId", spanContext.getSpanId());
             }
 
             try {
                 chain.doFilter(request, response);
+                int statusCode = httpResponse.getStatus();
+                span.setAttribute("http.response.status_code", statusCode);
+                if (statusCode >= 500) {
+                    span.setStatus(StatusCode.ERROR);
+                }
+            } catch (Exception e) {
+                span.recordException(e);
+                span.setStatus(StatusCode.ERROR, e.getMessage());
+                throw e;
             } finally {
-                // Clean up MDC
                 MDC.remove("traceId");
                 MDC.remove("spanId");
             }
+        } finally {
+            span.end();
         }
     }
 }
