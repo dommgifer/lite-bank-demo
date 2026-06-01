@@ -40,16 +40,16 @@ coverage/
 .coverage
 htmlcov/
 .pytest_cache/
-k6/*
+k6/**
 
 # Temporary files
 tmp/
 temp/
 
-dashboards/e2e/*
-dashboards/playwright-report/*
-dashboards/test-results/*
-dashboards/playwrighy-config.ts
+services/dashboard/e2e/
+services/dashboard/playwright-report/
+services/dashboard/test-results/
+services/dashboard/playwright.config.ts
 #skill
 .claude/*
 
