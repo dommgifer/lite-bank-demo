@@ -7,7 +7,7 @@ A microservices-based banking system demonstrating coordination layer architectu
 Lite Bank Demo is a learning-focused microservices project showcasing:
 
 - **Coordination Layer Architecture**: Clear separation between business orchestration and data operations
-- **Distributed Transactions**: SAGA pattern with coordination services orchestrating data layer operations
+- **Distributed Transactions**: Coordination services orchestrating atomic data layer operations via pessimistic locking
 - **Full Observability**: Manual OpenTelemetry instrumentation with complete trace context propagation
 - **Unified Technology Stack**: Java 21 + Spring Boot 3.x for all microservices
 - **Modern DevOps**: Docker, Kubernetes, Flyway migrations
@@ -31,7 +31,7 @@ This project implements a **coordination layer architecture** where:
 
 #### Coordination Layer Services (Java Spring Boot 3.4.x)
 - **Deposit-Withdrawal Service** - Orchestrates deposit/withdrawal operations
-- **Transfer Service** - Orchestrates money transfers (SAGA coordinator)
+- **Transfer Service** - Orchestrates money transfers
 - **Exchange Service** - Orchestrates currency exchange operations
 
 #### Frontend
@@ -115,7 +115,7 @@ lite-bank-demo/
 │   ├── transaction-service/          # Data Layer - Financial operations (ONLY modifies balances)
 │   ├── exchange-rate-service/        # Data Layer - FX rates (mock)
 │   ├── deposit-withdrawal-service/   # Coordination Layer - Deposit/Withdrawal orchestration
-│   ├── transfer-service/             # Coordination Layer - Transfer orchestration (SAGA)
+│   ├── transfer-service/             # Coordination Layer - Transfer orchestration
 │   └── exchange-service/             # Coordination Layer - Exchange orchestration
 ├── frontend/                         # React + Vite frontend
 ├── infrastructure/                   # Kubernetes manifests & Helm charts
@@ -130,20 +130,18 @@ lite-bank-demo/
 
 ## 🔄 Coordination Layer Architecture
 
-### SAGA Pattern Implementation
+### Transfer Flow
 
 The **Transfer Service** (Coordination Layer) orchestrates distributed transactions:
 
 1. **Validate Source Account** → calls Account Service
 2. **Validate Destination Account** → calls Account Service
-3. **Debit from Source** → calls Transaction Service
-4. **Credit to Destination** → calls Transaction Service
-5. **Record Transfer Transactions** → calls Transaction Service
+3. **Execute atomic transfer** → single call to Transaction Service (pessimistic lock, same DB transaction)
 
 **Key Principles:**
 - **Only Transaction Service modifies balances**: All coordination services must call Transaction Service for money operations
 - **Account Service is read-only**: Only provides queries and validation
-- **Compensation logic**: Handled by coordination layer, reverses operations via Transaction Service
+- **Atomicity**: Transaction Service acquires `SELECT FOR UPDATE` on both accounts in ID order to prevent deadlocks, then commits debit + credit in one DB transaction
 
 ## 📊 Observability
 
