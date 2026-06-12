@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+__pycache__/
+
+# Build outputs
+target/
+dist/
+build/
+*.jar
+*.war
+*.class
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+
+# Git
+.git/
+
+# Test coverage
+coverage/
+htmlcov/
+.pytest_cache/
+
+# Temporary files
+tmp/
+temp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+grafana-data/
+prometheus-data/
+tempo-data/
+loki-data/
+postgres-data/

@@ -54,3 +54,5 @@ services/dashboard/playwright.config.ts
 .claude/*
 
 .*-mcp/*
+
+specs/*

@@ -6,7 +6,6 @@
 - 分散式追蹤（Distributed Tracing）with Grafana Tempo
 - 日誌聚合（Log Aggregation）with Grafana Loki
 - 指標收集（Metrics Collection）with Prometheus
-- SAGA 補償模式（SAGA Compensation Pattern）
 - Chaos Engineering with Chaos Mesh
 
 ## 前置需求
@@ -93,13 +92,6 @@ docker exec litebank-postgres psql -U litebank_user -d litebank -c "SELECT user_
    - trace_id (for observability)
    - metadata (JSONB)
 
-4. **saga_executions** - SAGA 執行狀態
-   - saga_id (PK)
-   - transaction_id (FK → transactions)
-   - current_step, status
-   - compensate_from_step
-   - error_message, metadata
-
 ## Grafana 設定
 
 Grafana 已預先配置以下 Data Sources：
@@ -152,8 +144,7 @@ docker-compose logs -f [service-name]
 
 1. **開發微服務** - 實作 User Service, Account Service, Transaction Service
 2. **整合 OpenTelemetry SDK** - 在微服務中加入 trace, log, metrics instrumentation
-3. **測試 SAGA Pattern** - 實作跨幣別轉帳的 SAGA 流程
-4. **驗證可觀測性** - 在 Grafana Tempo 中視覺化完整的 trace
+3. **驗證可觀測性** - 在 Grafana Tempo 中視覺化完整的 trace
 
 ## 故障排除
 
