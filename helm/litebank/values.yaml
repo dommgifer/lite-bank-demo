@@ -70,6 +70,17 @@ observability:
     external:
       endpoint: "http://rancher-monitoring-grafana.cattle-monitoring-system:80"
 
+  # Prometheus Operator ServiceMonitor：讓叢集 Prometheus scrape 各 Spring Boot
+  # 服務的 /actuator/prometheus（第一方 micrometer 指標，與 Alloy spanmetrics 互補）。
+  # 僅在叢集存在 monitoring.coreos.com/v1 CRD 時才會渲染。
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /actuator/prometheus
+    # rancher Prometheus 的 serviceMonitorSelector 為空 {}，不需此標籤即可被抓，
+    # 保留此值讓歸屬更明確；設為空字串可略過。
+    releaseLabel: "rancher-monitoring"
+
 # ===========================================
 # 敏感資料
 # ===========================================

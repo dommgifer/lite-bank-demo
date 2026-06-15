@@ -1,0 +1,29 @@
+{{- if .Values.observability.serviceMonitor.enabled }}
+{{- if .Capabilities.APIVersions.Has "monitoring.coreos.com/v1" }}
+# 單一 ServiceMonitor，透過 litebank.io/metrics=enabled 標籤抓取所有 Spring Boot 服務的
+# /actuator/prometheus（micrometer 第一方指標：JVM、tomcat_threads、hikaricp、executor、
+# 未來的 resilience4j_circuitbreaker）。與 Alloy spanmetrics（litebank_*，span 派生）互補。
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "litebank.fullname" . }}-services
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "litebank.labels" . | nindent 4 }}
+    {{- with .Values.observability.serviceMonitor.releaseLabel }}
+    release: {{ . }}
+    {{- end }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      litebank.io/metrics: "enabled"
+  endpoints:
+    - port: http
+      path: {{ .Values.observability.serviceMonitor.path }}
+      interval: {{ .Values.observability.serviceMonitor.interval }}
+      scheme: http
+{{- end }}
+{{- end }}

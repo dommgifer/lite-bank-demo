@@ -170,6 +170,8 @@ management:
     export:
       prometheus:
         enabled: true
+    tags:
+      application: ${spring.application.name:${OTEL_SERVICE_NAME}}
 
 # Logging levels (format configured in logback-spring.xml)
 logging:

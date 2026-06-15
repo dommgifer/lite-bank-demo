@@ -1,6 +1,7 @@
 package com.litebank.userservice.config;
 
 import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.propagation.ContextPropagators;
@@ -22,11 +23,17 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenTelemetryConfig {
 
+    private static final AttributeKey<String> SERVICE_NAMESPACE_KEY =
+            AttributeKey.stringKey("service.namespace");
+
     @Value("${otel.service.name}")
     private String serviceName;
 
     @Value("${otel.exporter.otlp.endpoint}")
     private String otlpEndpoint;
+
+    @Value("${otel.resource.service-namespace:${OTEL_SERVICE_NAMESPACE:lite-bank}}")
+    private String serviceNamespace;
 
     @Bean
     public OpenTelemetry openTelemetry() {
@@ -34,6 +41,7 @@ public class OpenTelemetryConfig {
         Resource resource = Resource.getDefault()
                 .merge(Resource.create(Attributes.builder()
                         .put(ResourceAttributes.SERVICE_NAME, serviceName)
+                        .put(SERVICE_NAMESPACE_KEY, serviceNamespace)
                         .build()));
 
         // Configure OTLP Span Exporter

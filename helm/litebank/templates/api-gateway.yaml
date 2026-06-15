@@ -91,6 +91,7 @@ metadata:
   labels:
     {{- include "litebank.labels" . | nindent 4 }}
     app.kubernetes.io/name: api-gateway
+    litebank.io/metrics: "enabled"
 spec:
   type: ClusterIP
   ports:

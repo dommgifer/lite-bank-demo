@@ -239,6 +239,7 @@ metadata:
   labels:
     {{- include "litebank.labels" .root | nindent 4 }}
     app.kubernetes.io/name: {{ .name }}
+    litebank.io/metrics: "enabled"
 spec:
   type: ClusterIP
   ports:

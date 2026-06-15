@@ -41,6 +41,9 @@ management:
   endpoint:
     health:
       show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name:${OTEL_SERVICE_NAME}}
 
 logging:
   level:
