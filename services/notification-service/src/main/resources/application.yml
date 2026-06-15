@@ -1,5 +1,8 @@
 server:
   port: ${SERVER_PORT:8089}
+  tomcat:
+    mbeanregistry:
+      enabled: true
   # Tomcat async timeout for SSE (in milliseconds)
   servlet:
     async:

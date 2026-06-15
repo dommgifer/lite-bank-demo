@@ -1,5 +1,8 @@
 server:
   port: 8085
+  tomcat:
+    mbeanregistry:
+      enabled: true
 
 spring:
   application:

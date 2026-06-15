@@ -24,6 +24,9 @@ spring:
 
 server:
   port: ${SERVER_PORT:8082}
+  tomcat:
+    mbeanregistry:
+      enabled: true
 
 otel:
   service:

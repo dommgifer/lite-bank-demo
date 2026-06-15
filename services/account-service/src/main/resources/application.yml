@@ -23,6 +23,9 @@ spring:
 
 server:
   port: ${SERVER_PORT:8081}
+  tomcat:
+    mbeanregistry:
+      enabled: true
   servlet:
     context-path: /
 
