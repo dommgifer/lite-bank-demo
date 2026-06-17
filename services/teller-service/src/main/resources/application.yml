@@ -14,6 +14,32 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
+# Resilience4j Circuit Breaker (P-001 fix for TEL-W001)
+# NOTE: register-health-indicator MUST stay false — see "重要陷阱" in P-001 handoff.
+# An OPEN breaker must NOT make /actuator/health DOWN, or the probes would restart the
+# pod for a different reason and defeat the whole purpose of the circuit breaker.
+resilience4j:
+  circuitbreaker:
+    instances:
+      accountService:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 5
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: false
+      transactionService:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 5
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: false
+
 # Account Service Configuration
 account:
   service:
@@ -37,7 +63,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,prometheus,circuitbreakers
   endpoint:
     health:
       show-details: always

@@ -45,6 +45,19 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
+        <!-- Resilience4j (Circuit Breaker + Timeout) — P-001 fix for TEL-W001/TEL-W002.
+             Auto-registers resilience4j_circuitbreaker_* metrics into /actuator/prometheus. -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+        <!-- AOP: required for @CircuitBreaker annotation proxying -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <!-- OpenTelemetry -->
         <dependency>
             <groupId>io.opentelemetry</groupId>

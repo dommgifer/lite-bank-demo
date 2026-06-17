@@ -3,6 +3,7 @@ package com.litebank.tellerservice.service;
 import com.litebank.tellerservice.dto.*;
 import com.litebank.tellerservice.exception.ServiceCommunicationException;
 import com.litebank.tellerservice.exception.TellerException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +22,7 @@ public class TransactionServiceClient {
     @Value("${transaction.service.url}")
     private String transactionServiceUrl;
 
+    @CircuitBreaker(name = "transactionService", fallbackMethod = "createTransactionFallback")
     public TransactionResponse createTransaction(CreateTransactionRequest request) {
         try {
             String url = transactionServiceUrl + "/api/v1/transactions";
@@ -49,6 +51,13 @@ public class TransactionServiceClient {
         }
     }
 
+    @SuppressWarnings("unused")
+    private TransactionResponse createTransactionFallback(CreateTransactionRequest request, Throwable t) {
+        log.warn("transactionService CB fast-fail createTransaction: {}", t.toString());
+        throw new ServiceCommunicationException("Transaction Service 不可用(circuit open / timeout): " + t.getMessage());
+    }
+
+    @CircuitBreaker(name = "transactionService", fallbackMethod = "transferFallback")
     public TransferTransactionResponse transfer(TransferTransactionRequest request) {
         try {
             String url = transactionServiceUrl + "/api/v1/transactions/transfer";
@@ -77,6 +86,13 @@ public class TransactionServiceClient {
         }
     }
 
+    @SuppressWarnings("unused")
+    private TransferTransactionResponse transferFallback(TransferTransactionRequest request, Throwable t) {
+        log.warn("transactionService CB fast-fail transfer: {}", t.toString());
+        throw new ServiceCommunicationException("Transaction Service 不可用(circuit open / timeout): " + t.getMessage());
+    }
+
+    @CircuitBreaker(name = "transactionService", fallbackMethod = "creditFallback")
     public TransactionResponse credit(CreditRequest request) {
         String url = transactionServiceUrl + "/api/v1/transactions/credit";
         log.debug("Calling Transaction Service: POST {}", url);
@@ -105,6 +121,14 @@ public class TransactionServiceClient {
         }
     }
 
+    @SuppressWarnings("unused")
+    private TransactionResponse creditFallback(CreditRequest request, Throwable t) {
+        log.warn("transactionService CB fast-fail credit: {}", t.toString());
+        if (t instanceof TellerException te) throw te;
+        throw new TellerException("ERR_DEP_003", "Transaction Service 不可用(circuit open / timeout): " + t.getMessage());
+    }
+
+    @CircuitBreaker(name = "transactionService", fallbackMethod = "debitFallback")
     public TransactionResponse debit(DebitRequest request) {
         String url = transactionServiceUrl + "/api/v1/transactions/debit";
         log.debug("Calling Transaction Service: POST {}", url);
@@ -131,5 +155,12 @@ public class TransactionServiceClient {
             if (e instanceof TellerException) throw e;
             throw new TellerException("ERR_WTH_004", "Failed to communicate with Transaction Service: " + e.getMessage());
         }
+    }
+
+    @SuppressWarnings("unused")
+    private TransactionResponse debitFallback(DebitRequest request, Throwable t) {
+        log.warn("transactionService CB fast-fail debit: {}", t.toString());
+        if (t instanceof TellerException te) throw te;
+        throw new TellerException("ERR_WTH_004", "Transaction Service 不可用(circuit open / timeout): " + t.getMessage());
     }
 }

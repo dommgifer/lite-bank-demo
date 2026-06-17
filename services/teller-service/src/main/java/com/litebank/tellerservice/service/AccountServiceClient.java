@@ -3,6 +3,7 @@ package com.litebank.tellerservice.service;
 import com.litebank.tellerservice.dto.AccountResponse;
 import com.litebank.tellerservice.dto.ApiResponse;
 import com.litebank.tellerservice.exception.ServiceCommunicationException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +26,7 @@ public class AccountServiceClient {
     @Value("${account.service.url}")
     private String accountServiceUrl;
 
+    @CircuitBreaker(name = "accountService", fallbackMethod = "getAccountFallback")
     public AccountResponse getAccount(Long accountId) {
         try {
             String url = accountServiceUrl + "/api/v1/accounts/" + accountId;
@@ -50,6 +52,13 @@ public class AccountServiceClient {
         }
     }
 
+    @SuppressWarnings("unused")
+    private AccountResponse getAccountFallback(Long accountId, Throwable t) {
+        log.warn("accountService CB fast-fail getAccount({}): {}", accountId, t.toString());
+        throw new ServiceCommunicationException("Account Service 不可用(circuit open / timeout): " + t.getMessage());
+    }
+
+    @CircuitBreaker(name = "accountService", fallbackMethod = "updateAccountBalanceFallback")
     public AccountResponse updateAccountBalance(Long accountId, BigDecimal newBalance) {
         try {
             String url = accountServiceUrl + "/api/v1/accounts/" + accountId + "/balance?newBalance=" + newBalance;
@@ -73,5 +82,11 @@ public class AccountServiceClient {
             log.error("Error updating account balance for account {}: {}", accountId, e.getMessage());
             throw new ServiceCommunicationException("Failed to update account balance: " + e.getMessage());
         }
+    }
+
+    @SuppressWarnings("unused")
+    private AccountResponse updateAccountBalanceFallback(Long accountId, BigDecimal newBalance, Throwable t) {
+        log.warn("accountService CB fast-fail updateAccountBalance({}): {}", accountId, t.toString());
+        throw new ServiceCommunicationException("Account Service 不可用(circuit open / timeout): " + t.getMessage());
     }
 }
