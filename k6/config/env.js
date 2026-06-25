@@ -2,7 +2,8 @@
 // 環境配置與常數
 // ============================================
 
-export const BASE_URL = __ENV.BASE_URL || 'http://localhost:9000';
+// 結尾斜線一律剝掉，避免與 `${BASE_URL}/api/...` 組出 `//api`(ingress 會回 404)
+export const BASE_URL = (__ENV.BASE_URL || 'http://localhost:9000').replace(/\/+$/, '');
 
 // 基礎測試用戶（只定義帳密，帳戶資料由 API 動態取得）
 export const BASE_USERS = [

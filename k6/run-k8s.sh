@@ -18,7 +18,7 @@
 set -euo pipefail
 
 # K8s 進入點與用戶池(對應 db/migration/V10 種的 loadtest_0001..0200)
-BASE_URL=${BASE_URL:-http://litebank.192.168.1.70.nip.io/}
+BASE_URL=${BASE_URL:-http://litebank.192.168.1.70.nip.io}
 USER_POOL=${USER_POOL:-200}
 HOT_USER=${HOT_USER:-loadtest_0001}
 
