@@ -1,0 +1,1146 @@
+# Lite Bank SLO 告警規則（Grafana-managed alert rules provisioning）
+#
+# 設計依據：docs/sre/alert-design.md
+# 指標來源：Alloy spanmetrics（litebank_*）+ Micrometer（hikaricp_/jvm_/tomcat_）
+#
+# 重要：錯誤判定一律使用 OTel span status `status_code!="STATUS_CODE_ERROR"`，
+#       spanmetrics 沒有 HTTP 5xx 維度。
+#
+# Burn rate 採 Google SRE 多窗口多燃燒率（MWMB）：雙窗口 AND 寫在單一 PromQL，
+# 不燒時回空向量，搭配 noDataState=OK 視為健康；服務沉默由 INF-005 absent() 負責。
+apiVersion: 1
+
+groups:
+  # ============================================================
+  # 業務 SLO — Error Budget Burn Rate（MWMB）
+  # ============================================================
+  - orgId: 1
+    name: LiteBank SLO - Burn Rate
+    folder: Lite Bank
+    interval: 1m
+    rules:
+      # ---------- 轉帳 (99.5%, budget 0.005) ----------
+      - uid: litebank-br-transfers-crit
+        title: "[Critical] 轉帳 SLO Burn Rate 14.4x"
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          layer: business
+          slo: transfers
+        annotations:
+          summary: "轉帳 error budget 高速燃燒：burn rate > 14.4x（1h & 5m 雙窗口）"
+          description: "1 小時內將燒掉約 2% 月度 budget，預估 ~2 天耗盡。立即介入。"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: |
+                ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[1h])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER"}[1h]))) / 0.005 > 14.4)
+                and
+                ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER"}[5m]))) / 0.005 > 14.4)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-br-transfers-warn
+        title: "[Warning] 轉帳 SLO Burn Rate 6x"
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          layer: business
+          slo: transfers
+        annotations:
+          summary: "轉帳 error budget 加速燃燒：burn rate > 6x（6h & 30m 雙窗口）"
+          description: "budget 消耗加速，當班確認根因。"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: |
+                ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[6h])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER"}[6h]))) / 0.005 > 6)
+                and
+                ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[30m])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER"}[30m]))) / 0.005 > 6)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      # ---------- 存款 (99.5%, budget 0.005) ----------
+      - uid: litebank-br-deposits-crit
+        title: "[Critical] 存款 SLO Burn Rate 14.4x"
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          layer: business
+          slo: deposits
+        annotations:
+          summary: "存款 error budget 高速燃燒：burn rate > 14.4x（1h & 5m 雙窗口）"
+          description: "1 小時內將燒掉約 2% 月度 budget，立即介入。"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: |
+                ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[1h])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER"}[1h]))) / 0.005 > 14.4)
+                and
+                ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER"}[5m]))) / 0.005 > 14.4)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-br-deposits-warn
+        title: "[Warning] 存款 SLO Burn Rate 6x"
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          layer: business
+          slo: deposits
+        annotations:
+          summary: "存款 error budget 加速燃燒：burn rate > 6x（6h & 30m 雙窗口）"
+          description: "budget 消耗加速，當班確認根因。"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: |
+                ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[6h])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER"}[6h]))) / 0.005 > 6)
+                and
+                ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[30m])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER"}[30m]))) / 0.005 > 6)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      # ---------- 提款 (99.5%, budget 0.005) ----------
+      - uid: litebank-br-withdrawals-crit
+        title: "[Critical] 提款 SLO Burn Rate 14.4x"
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          layer: business
+          slo: withdrawals
+        annotations:
+          summary: "提款 error budget 高速燃燒：burn rate > 14.4x（1h & 5m 雙窗口）"
+          description: "1 小時內將燒掉約 2% 月度 budget，立即介入。"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: |
+                ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[1h])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER"}[1h]))) / 0.005 > 14.4)
+                and
+                ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER"}[5m]))) / 0.005 > 14.4)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-br-withdrawals-warn
+        title: "[Warning] 提款 SLO Burn Rate 6x"
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          layer: business
+          slo: withdrawals
+        annotations:
+          summary: "提款 error budget 加速燃燒：burn rate > 6x（6h & 30m 雙窗口）"
+          description: "budget 消耗加速，當班確認根因。"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: |
+                ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[6h])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER"}[6h]))) / 0.005 > 6)
+                and
+                ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[30m])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER"}[30m]))) / 0.005 > 6)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      # ---------- 換匯 (99.0%, budget 0.01) ----------
+      - uid: litebank-br-exchanges-crit
+        title: "[Critical] 換匯 SLO Burn Rate 14.4x"
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          layer: business
+          slo: exchanges
+        annotations:
+          summary: "換匯 error budget 高速燃燒：burn rate > 14.4x（1h & 5m 雙窗口）"
+          description: "1 小時內將燒掉約 2% 月度 budget，立即介入。"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: |
+                ((1 - sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[1h])) / sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER"}[1h]))) / 0.01 > 14.4)
+                and
+                ((1 - sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER"}[5m]))) / 0.01 > 14.4)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-br-exchanges-warn
+        title: "[Warning] 換匯 SLO Burn Rate 6x"
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          layer: business
+          slo: exchanges
+        annotations:
+          summary: "換匯 error budget 加速燃燒：burn rate > 6x（6h & 30m 雙窗口）"
+          description: "budget 消耗加速，當班確認根因。"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: |
+                ((1 - sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[6h])) / sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER"}[6h]))) / 0.01 > 6)
+                and
+                ((1 - sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[30m])) / sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER"}[30m]))) / 0.01 > 6)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      # ---------- 登入 (99.9%, budget 0.001) ----------
+      - uid: litebank-br-login-crit
+        title: "[Critical] 登入 SLO Burn Rate 14.4x"
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          layer: business
+          slo: login
+        annotations:
+          summary: "登入 error budget 高速燃燒：burn rate > 14.4x（1h & 5m 雙窗口）"
+          description: "用戶無法登入是最直接的影響，立即介入。"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: |
+                ((1 - sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[1h])) / sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER"}[1h]))) / 0.001 > 14.4)
+                and
+                ((1 - sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER"}[5m]))) / 0.001 > 14.4)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-br-login-warn
+        title: "[Warning] 登入 SLO Burn Rate 6x"
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          layer: business
+          slo: login
+        annotations:
+          summary: "登入 error budget 加速燃燒：burn rate > 6x（6h & 30m 雙窗口）"
+          description: "budget 消耗加速，當班確認根因。"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: |
+                ((1 - sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[6h])) / sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER"}[6h]))) / 0.001 > 6)
+                and
+                ((1 - sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[30m])) / sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER"}[30m]))) / 0.001 > 6)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      # ---------- 帳戶查詢 (99.9%, budget 0.001) ----------
+      - uid: litebank-br-balance-crit
+        title: "[Critical] 帳戶查詢 SLO Burn Rate 14.4x"
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          layer: business
+          slo: balance
+        annotations:
+          summary: "帳戶查詢 error budget 高速燃燒：burn rate > 14.4x（1h & 5m 雙窗口）"
+          description: "餘額查詢是高頻核心讀取路徑，立即介入。"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: |
+                ((1 - sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[1h])) / sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER"}[1h]))) / 0.001 > 14.4)
+                and
+                ((1 - sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER"}[5m]))) / 0.001 > 14.4)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-br-balance-warn
+        title: "[Warning] 帳戶查詢 SLO Burn Rate 6x"
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          layer: business
+          slo: balance
+        annotations:
+          summary: "帳戶查詢 error budget 加速燃燒：burn rate > 6x（6h & 30m 雙窗口）"
+          description: "budget 消耗加速，當班確認根因。"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: |
+                ((1 - sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[6h])) / sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER"}[6h]))) / 0.001 > 6)
+                and
+                ((1 - sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[30m])) / sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER"}[30m]))) / 0.001 > 6)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+  # ============================================================
+  # 業務 SLO — P99 延遲
+  # ============================================================
+  - orgId: 1
+    name: LiteBank SLO - Latency
+    folder: Lite Bank
+    interval: 1m
+    rules:
+      - uid: litebank-lat-transfers-warn
+        title: "[Warning] 轉帳 P99 延遲 > 3000ms"
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: warning, layer: business, slo: transfers }
+        annotations:
+          summary: "轉帳 P99 延遲超過 SLO（3000ms）持續 5 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 3000'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-lat-transfers-crit
+        title: "[Critical] 轉帳 P99 延遲 > 6000ms"
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: critical, layer: business, slo: transfers }
+        annotations:
+          summary: "轉帳 P99 延遲達 SLO 兩倍（6000ms）持續 2 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 6000'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-lat-deposits-warn
+        title: "[Warning] 存款 P99 延遲 > 2000ms"
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: warning, layer: business, slo: deposits }
+        annotations:
+          summary: "存款 P99 延遲超過 SLO（2000ms）持續 5 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 2000'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-lat-deposits-crit
+        title: "[Critical] 存款 P99 延遲 > 4000ms"
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: critical, layer: business, slo: deposits }
+        annotations:
+          summary: "存款 P99 延遲達 SLO 兩倍（4000ms）持續 2 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 4000'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-lat-withdrawals-warn
+        title: "[Warning] 提款 P99 延遲 > 2000ms"
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: warning, layer: business, slo: withdrawals }
+        annotations:
+          summary: "提款 P99 延遲超過 SLO（2000ms）持續 5 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 2000'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-lat-withdrawals-crit
+        title: "[Critical] 提款 P99 延遲 > 4000ms"
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: critical, layer: business, slo: withdrawals }
+        annotations:
+          summary: "提款 P99 延遲達 SLO 兩倍（4000ms）持續 2 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 4000'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-lat-exchanges-warn
+        title: "[Warning] 換匯 P99 延遲 > 5000ms"
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: warning, layer: business, slo: exchanges }
+        annotations:
+          summary: "換匯 P99 延遲超過 SLO（5000ms）持續 5 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 5000'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-lat-exchanges-crit
+        title: "[Critical] 換匯 P99 延遲 > 10000ms"
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: critical, layer: business, slo: exchanges }
+        annotations:
+          summary: "換匯 P99 延遲達 SLO 兩倍（10000ms）持續 2 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 10000'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-lat-login-warn
+        title: "[Warning] 登入 P99 延遲 > 1000ms"
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: warning, layer: business, slo: login }
+        annotations:
+          summary: "登入 P99 延遲超過 SLO（1000ms）持續 5 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 1000'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-lat-login-crit
+        title: "[Critical] 登入 P99 延遲 > 2000ms"
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: critical, layer: business, slo: login }
+        annotations:
+          summary: "登入 P99 延遲達 SLO 兩倍（2000ms）持續 2 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 2000'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-lat-balance-warn
+        title: "[Warning] 帳戶查詢 P99 延遲 > 500ms"
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: warning, layer: business, slo: balance }
+        annotations:
+          summary: "帳戶查詢 P99 延遲超過 SLO（500ms）持續 5 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 500'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-lat-balance-crit
+        title: "[Critical] 帳戶查詢 P99 延遲 > 1000ms"
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: critical, layer: business, slo: balance }
+        annotations:
+          summary: "帳戶查詢 P99 延遲達 SLO 兩倍（1000ms）持續 2 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 1000'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+  # ============================================================
+  # 基礎設施告警
+  # ============================================================
+  - orgId: 1
+    name: LiteBank Infra
+    folder: Lite Bank
+    interval: 1m
+    rules:
+      # INF-001 transaction-service 錯誤率（唯一寫帳服務）
+      - uid: litebank-inf-transaction-err-warn
+        title: "[Warning] transaction-service 錯誤率 > 1%"
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: warning, layer: infra, service: transaction-service }
+        annotations:
+          summary: "transaction-service 錯誤率超過 1% 持續 2 分鐘（餘額寫入路徑）"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'sum(rate(litebank_calls_total{service_name="transaction-service",span_kind="SPAN_KIND_SERVER",status_code="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="transaction-service",span_kind="SPAN_KIND_SERVER"}[5m])) > 0.01'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-inf-transaction-err-crit
+        title: "[Critical] transaction-service 錯誤率 > 5%"
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: critical, layer: infra, service: transaction-service }
+        annotations:
+          summary: "transaction-service 錯誤率超過 5% 持續 2 分鐘，餘額寫入受阻"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'sum(rate(litebank_calls_total{service_name="transaction-service",span_kind="SPAN_KIND_SERVER",status_code="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="transaction-service",span_kind="SPAN_KIND_SERVER"}[5m])) > 0.05'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      # INF-002 HikariCP 連線池排隊
+      - uid: litebank-inf-hikari-warn
+        title: "[Warning] HikariCP 待連線 > 2"
+        condition: C
+        for: 3m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: warning, layer: infra }
+        annotations:
+          summary: "{{ $labels.application }} DB 連線池開始排隊（pending > 2）持續 3 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'hikaricp_connections_pending > 2'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-inf-hikari-crit
+        title: "[Critical] HikariCP 待連線 > 10"
+        condition: C
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: critical, layer: infra }
+        annotations:
+          summary: "{{ $labels.application }} DB 連線池接近耗盡（pending > 10）持續 1 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'hikaricp_connections_pending > 10'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      # INF-003 JVM Heap 壓力
+      - uid: litebank-inf-heap-warn
+        title: "[Warning] JVM Heap 使用率 > 85%"
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: warning, layer: infra }
+        annotations:
+          summary: "{{ $labels.application }} JVM Heap 使用率超過 85% 持續 5 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'sum by (application) (jvm_memory_used_bytes{area="heap"}) / sum by (application) (jvm_memory_max_bytes{area="heap"}) * 100 > 85'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-inf-heap-crit
+        title: "[Critical] JVM Heap 使用率 > 95%"
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: critical, layer: infra }
+        annotations:
+          summary: "{{ $labels.application }} JVM Heap 使用率超過 95% 持續 2 分鐘，瀕臨 OOM"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'sum by (application) (jvm_memory_used_bytes{area="heap"}) / sum by (application) (jvm_memory_max_bytes{area="heap"}) * 100 > 95'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      # INF-004 Tomcat 執行緒
+      - uid: litebank-inf-tomcat-warn
+        title: "[Warning] Tomcat 執行緒使用率 > 80%"
+        condition: C
+        for: 3m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: warning, layer: infra }
+        annotations:
+          summary: "{{ $labels.application }} Tomcat 執行緒使用率超過 80% 持續 3 分鐘"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'tomcat_threads_busy_threads / tomcat_threads_config_max_threads > 0.8'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-inf-tomcat-crit
+        title: "[Critical] Tomcat 執行緒使用率 > 90%"
+        condition: C
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: critical, layer: infra }
+        annotations:
+          summary: "{{ $labels.application }} Tomcat 執行緒使用率超過 90% 持續 1 分鐘，瀕臨拒絕請求"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'tomcat_threads_busy_threads / tomcat_threads_config_max_threads > 0.9'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      # INF-005 服務沉默（spanmetrics 完全消失）
+      - uid: litebank-inf-absent-api-gateway
+        title: "[Critical] api-gateway 無流量訊號"
+        condition: C
+        for: 5m
+        noDataState: Alerting
+        execErrState: Error
+        labels: { severity: critical, layer: infra, service: api-gateway }
+        annotations:
+          summary: "api-gateway spanmetrics 連續 5 分鐘無資料，疑似服務不可達"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'absent(litebank_calls_total{service_name="api-gateway",span_kind="SPAN_KIND_SERVER"})'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-inf-absent-teller
+        title: "[Critical] teller-service 無流量訊號"
+        condition: C
+        for: 5m
+        noDataState: Alerting
+        execErrState: Error
+        labels: { severity: critical, layer: infra, service: teller-service }
+        annotations:
+          summary: "teller-service spanmetrics 連續 5 分鐘無資料，疑似服務不可達"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'absent(litebank_calls_total{service_name="teller-service",span_kind="SPAN_KIND_SERVER"})'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: litebank-inf-absent-transaction
+        title: "[Critical] transaction-service 無流量訊號"
+        condition: C
+        for: 5m
+        noDataState: Alerting
+        execErrState: Error
+        labels: { severity: critical, layer: infra, service: transaction-service }
+        annotations:
+          summary: "transaction-service spanmetrics 連續 5 分鐘無資料，餘額寫入完全中斷"
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'absent(litebank_calls_total{service_name="transaction-service",span_kind="SPAN_KIND_SERVER"})'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }

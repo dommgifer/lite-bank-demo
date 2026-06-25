@@ -149,6 +149,7 @@ services:
       - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
       - ./grafana/dashboard-provisioning.yaml:/etc/grafana/provisioning/dashboards/dashboard-provisioning.yaml
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards/json
+      - ./grafana/alerting:/etc/grafana/provisioning/alerting
       - grafana_data:/var/lib/grafana
     ports:
       - "3000:3000"

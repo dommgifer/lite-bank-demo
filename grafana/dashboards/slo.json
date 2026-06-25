@@ -1,0 +1,1426 @@
+{
+  "uid": "litebank-slo",
+  "title": "Lite Bank - SLO Dashboard",
+  "description": "業務操作與基礎設施的 Service Level Objectives 監控",
+  "tags": [
+    "litebank",
+    "slo"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "業務 SLO — 可用性 (5m 窗口)",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "type": "gauge",
+      "title": "轉帳 (SLO 99.5%)",
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 99.5
+              },
+              {
+                "color": "green",
+                "value": 99.7
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"teller-service\",http_route=\"/api/v1/transfers\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"teller-service\",http_route=\"/api/v1/transfers\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) * 100",
+          "legendFormat": "可用率",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "gauge",
+      "title": "存款 (SLO 99.5%)",
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 99.5
+              },
+              {
+                "color": "green",
+                "value": 99.7
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"teller-service\",http_route=\"/api/v1/deposits\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"teller-service\",http_route=\"/api/v1/deposits\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) * 100",
+          "legendFormat": "可用率",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "gauge",
+      "title": "提款 (SLO 99.5%)",
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 99.5
+              },
+              {
+                "color": "green",
+                "value": 99.7
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"teller-service\",http_route=\"/api/v1/withdrawals\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"teller-service\",http_route=\"/api/v1/withdrawals\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) * 100",
+          "legendFormat": "可用率",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "gauge",
+      "title": "換匯 (SLO 99.0%)",
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 99.0
+              },
+              {
+                "color": "green",
+                "value": 99.2
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"exchange-service\",http_route=\"/api/v1/exchanges\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"exchange-service\",http_route=\"/api/v1/exchanges\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) * 100",
+          "legendFormat": "可用率",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "gauge",
+      "title": "登入 (SLO 99.9%)",
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 99.9
+              },
+              {
+                "color": "green",
+                "value": 99.95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"user-service\",http_route=\"/api/v1/auth/login\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"user-service\",http_route=\"/api/v1/auth/login\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) * 100",
+          "legendFormat": "可用率",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "gauge",
+      "title": "帳戶查詢 (SLO 99.9%)",
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 99.9
+              },
+              {
+                "color": "green",
+                "value": 99.95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"account-service\",http_route=\"/api/v1/accounts/{accountId}/balance\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"account-service\",http_route=\"/api/v1/accounts/{accountId}/balance\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) * 100",
+          "legendFormat": "可用率",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "row",
+      "title": "業務 SLO — P99 延遲 (5m 窗口)",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "轉帳 P99 (SLO 3000ms)",
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 2000
+              },
+              {
+                "color": "red",
+                "value": 3000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name=\"teller-service\",http_route=\"/api/v1/transfers\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) by (le))",
+          "legendFormat": "P99",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "存款 P99 (SLO 2000ms)",
+      "gridPos": {
+        "x": 4,
+        "y": 6,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1500
+              },
+              {
+                "color": "red",
+                "value": 2000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name=\"teller-service\",http_route=\"/api/v1/deposits\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) by (le))",
+          "legendFormat": "P99",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "提款 P99 (SLO 2000ms)",
+      "gridPos": {
+        "x": 8,
+        "y": 6,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1500
+              },
+              {
+                "color": "red",
+                "value": 2000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name=\"teller-service\",http_route=\"/api/v1/withdrawals\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) by (le))",
+          "legendFormat": "P99",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "換匯 P99 (SLO 5000ms)",
+      "gridPos": {
+        "x": 12,
+        "y": 6,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 3000
+              },
+              {
+                "color": "red",
+                "value": 5000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name=\"exchange-service\",http_route=\"/api/v1/exchanges\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) by (le))",
+          "legendFormat": "P99",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "登入 P99 (SLO 1000ms)",
+      "gridPos": {
+        "x": 16,
+        "y": 6,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 700
+              },
+              {
+                "color": "red",
+                "value": 1000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name=\"user-service\",http_route=\"/api/v1/auth/login\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) by (le))",
+          "legendFormat": "P99",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "帳戶查詢 P99 (SLO 500ms)",
+      "gridPos": {
+        "x": 20,
+        "y": 6,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 300
+              },
+              {
+                "color": "red",
+                "value": 500
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name=\"account-service\",http_route=\"/api/v1/accounts/{accountId}/balance\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) by (le))",
+          "legendFormat": "P99",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "row",
+      "title": "Error Budget 剩餘 (30 天滾動窗口)",
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "轉帳 Error Budget (99.5%)",
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 20
+              },
+              {
+                "color": "green",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "(1 - (1 - sum(rate(litebank_calls_total{service_name=\"teller-service\",http_route=\"/api/v1/transfers\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[30d])) / sum(rate(litebank_calls_total{service_name=\"teller-service\",http_route=\"/api/v1/transfers\",span_kind=\"SPAN_KIND_SERVER\"}[30d]))) / 0.005) * 100",
+          "legendFormat": "剩餘",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "換匯 Error Budget (99.0%)",
+      "gridPos": {
+        "x": 6,
+        "y": 11,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 20
+              },
+              {
+                "color": "green",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "(1 - (1 - sum(rate(litebank_calls_total{service_name=\"exchange-service\",http_route=\"/api/v1/exchanges\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[30d])) / sum(rate(litebank_calls_total{service_name=\"exchange-service\",http_route=\"/api/v1/exchanges\",span_kind=\"SPAN_KIND_SERVER\"}[30d]))) / 0.01) * 100",
+          "legendFormat": "剩餘",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "登入 Error Budget (99.9%)",
+      "gridPos": {
+        "x": 12,
+        "y": 11,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 20
+              },
+              {
+                "color": "green",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "(1 - (1 - sum(rate(litebank_calls_total{service_name=\"user-service\",http_route=\"/api/v1/auth/login\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[30d])) / sum(rate(litebank_calls_total{service_name=\"user-service\",http_route=\"/api/v1/auth/login\",span_kind=\"SPAN_KIND_SERVER\"}[30d]))) / 0.001) * 100",
+          "legendFormat": "剩餘",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "stat",
+      "title": "帳戶查詢 Error Budget (99.9%)",
+      "gridPos": {
+        "x": 18,
+        "y": 11,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 20
+              },
+              {
+                "color": "green",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "(1 - (1 - sum(rate(litebank_calls_total{service_name=\"account-service\",http_route=\"/api/v1/accounts/{accountId}/balance\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[30d])) / sum(rate(litebank_calls_total{service_name=\"account-service\",http_route=\"/api/v1/accounts/{accountId}/balance\",span_kind=\"SPAN_KIND_SERVER\"}[30d]))) / 0.001) * 100",
+          "legendFormat": "剩餘",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Error Budget Burn Rate (1h 窗口)",
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Burn Rate — 1x=正常消耗 / 6x=Warning / 14x=Critical",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1,
+          "custom": {
+            "lineWidth": 2
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 6
+              },
+              {
+                "color": "red",
+                "value": 14
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "thresholdsStyle": {
+          "mode": "line"
+        }
+      },
+      "targets": [
+        {
+          "expr": "(1 - sum(rate(litebank_calls_total{service_name=\"teller-service\",http_route=\"/api/v1/transfers\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[1h])) / sum(rate(litebank_calls_total{service_name=\"teller-service\",http_route=\"/api/v1/transfers\",span_kind=\"SPAN_KIND_SERVER\"}[1h]))) / 0.005",
+          "legendFormat": "轉帳",
+          "refId": "A"
+        },
+        {
+          "expr": "(1 - sum(rate(litebank_calls_total{service_name=\"exchange-service\",http_route=\"/api/v1/exchanges\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[1h])) / sum(rate(litebank_calls_total{service_name=\"exchange-service\",http_route=\"/api/v1/exchanges\",span_kind=\"SPAN_KIND_SERVER\"}[1h]))) / 0.01",
+          "legendFormat": "換匯",
+          "refId": "B"
+        },
+        {
+          "expr": "(1 - sum(rate(litebank_calls_total{service_name=\"user-service\",http_route=\"/api/v1/auth/login\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[1h])) / sum(rate(litebank_calls_total{service_name=\"user-service\",http_route=\"/api/v1/auth/login\",span_kind=\"SPAN_KIND_SERVER\"}[1h]))) / 0.001",
+          "legendFormat": "登入",
+          "refId": "C"
+        },
+        {
+          "expr": "(1 - sum(rate(litebank_calls_total{service_name=\"account-service\",http_route=\"/api/v1/accounts/{accountId}/balance\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[1h])) / sum(rate(litebank_calls_total{service_name=\"account-service\",http_route=\"/api/v1/accounts/{accountId}/balance\",span_kind=\"SPAN_KIND_SERVER\"}[1h]))) / 0.001",
+          "legendFormat": "帳戶查詢",
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "row",
+      "title": "基礎設施 SLO (5m 窗口)",
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 23,
+      "type": "gauge",
+      "title": "transaction-service (SLO 99.9%)",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "min": 99.0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 99.9
+              },
+              {
+                "color": "green",
+                "value": 99.95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"transaction-service\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"transaction-service\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) * 100",
+          "legendFormat": "可用率",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "type": "gauge",
+      "title": "account-service (SLO 99.9%)",
+      "gridPos": {
+        "x": 6,
+        "y": 24,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "min": 99.0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 99.9
+              },
+              {
+                "color": "green",
+                "value": 99.95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"account-service\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"account-service\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) * 100",
+          "legendFormat": "可用率",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "type": "gauge",
+      "title": "api-gateway (SLO 99.9%)",
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "min": 99.0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 99.9
+              },
+              {
+                "color": "green",
+                "value": 99.95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"api-gateway\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"api-gateway\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) * 100",
+          "legendFormat": "可用率",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "type": "gauge",
+      "title": "teller-service (SLO 99.9%)",
+      "gridPos": {
+        "x": 18,
+        "y": 24,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "min": 99.0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 99.9
+              },
+              {
+                "color": "green",
+                "value": 99.95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litebank_calls_total{service_name=\"teller-service\",span_kind=\"SPAN_KIND_SERVER\",status_code!=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(litebank_calls_total{service_name=\"teller-service\",span_kind=\"SPAN_KIND_SERVER\"}[5m])) * 100",
+          "legendFormat": "可用率",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "type": "row",
+      "title": "DB 連線池 & JVM 健康",
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 28,
+      "type": "timeseries",
+      "title": "HikariCP — 待連線請求數 (>2 Warning / >10 Critical)",
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 12,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 2
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "thresholdsStyle": {
+          "mode": "line"
+        }
+      },
+      "targets": [
+        {
+          "expr": "hikaricp_connections_pending",
+          "legendFormat": "{{application}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "type": "timeseries",
+      "title": "JVM Heap 使用率 (>85% Warning / >95% Critical)",
+      "gridPos": {
+        "x": 12,
+        "y": 29,
+        "w": 12,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 85
+              },
+              {
+                "color": "red",
+                "value": 95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "thresholdsStyle": {
+          "mode": "line"
+        }
+      },
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{area=\"heap\"} / jvm_memory_max_bytes{area=\"heap\"} * 100",
+          "legendFormat": "{{application}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}
