@@ -3,6 +3,9 @@
 // ============================================
 
 export const options = {
+  // setup 會逐一登入 TARGET_POOL 個用戶建轉帳目標池(預設整池 200)，
+  // 拉高 setupTimeout 避免大池子時 setup 超時。
+  setupTimeout: '180s',
   scenarios: {
     continuous_traffic: {
       executor: 'constant-vus',

@@ -21,6 +21,10 @@ export const options = scenarioOptions;
 const MODE = (__ENV.MODE || 'normal').toLowerCase();
 const USER_POOL = parseInt(__ENV.USER_POOL) || 200;
 const HOT_USER = __ENV.HOT_USER || 'loadtest_0001';
+// 轉帳目標池取樣數：預設 = 整個用戶池，讓收款方跟 VU 一樣分散到全部用戶，
+// 避免轉帳集中打少數帳戶造成假熱點(連帶拖垮 transaction-service)。
+// 快速 smoke 可調小(如 TARGET_POOL=30)換取較快的 setup。
+const TARGET_POOL = parseInt(__ENV.TARGET_POOL) || USER_POOL;
 
 // loadtest 用戶帳密（密碼皆 password123，見 db/migration/V10）
 function loadtestUser(n) {
@@ -56,8 +60,9 @@ export function setup() {
     throw new Error(`無法連接到 ${BASE_URL}，請確認服務已啟動`);
   }
 
-  // 取樣前 N 個 loadtest 用戶建立轉帳目標池（每人 4 幣別帳戶，少量取樣即可覆蓋）
-  const sampleSize = Math.min(USER_POOL, 30);
+  // 取樣 loadtest 用戶建立轉帳目標池：預設涵蓋整個用戶池，讓轉帳收款方分散，
+  // 還原穩態低碰撞流量（熱點請改用 MODE=hot，而非靠目標池過小製造）。
+  const sampleSize = Math.min(USER_POOL, TARGET_POOL);
   const transferTargets = {};
 
   for (let n = 1; n <= sampleSize; n++) {
@@ -73,7 +78,7 @@ export function setup() {
   const summary = Object.fromEntries(
     Object.entries(transferTargets).map(([c, ids]) => [c, ids.length])
   );
-  console.log(`Transfer targets (by currency): ${JSON.stringify(summary)}`);
+  console.log(`Transfer targets (sampled ${sampleSize} users, by currency): ${JSON.stringify(summary)}`);
   return { transferTargets, startTime: new Date().toISOString() };
 }
 
