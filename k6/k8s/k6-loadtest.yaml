@@ -1,0 +1,69 @@
+# ============================================
+# Lite Bank k6 持續流量產生器 — K8s Deployment
+#
+# 部署到 lite-bank namespace，透過 ClusterIP service 直連 api-gateway:8080，
+# 不走外部 ingress/gateway(nip.io)。預設 normal 模式、無限執行(持續有流量)。
+#
+# 套用:
+#   kubectl apply -f k6/k8s/k6-loadtest.yaml
+# 改參數(VUS/DURATION/MODE)後重新套用，或:
+#   kubectl -n lite-bank set env deploy/k6-loadtest VUS=80 MODE=hot
+# 看進度:
+#   kubectl -n lite-bank logs -f deploy/k6-loadtest
+# 暫停 / 恢復:
+#   kubectl -n lite-bank scale deploy/k6-loadtest --replicas=0
+#   kubectl -n lite-bank scale deploy/k6-loadtest --replicas=1
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k6-loadtest
+  namespace: lite-bank
+  labels:
+    app.kubernetes.io/name: k6-loadtest
+    app.kubernetes.io/component: loadtest
+spec:
+  # 持續流量靠單一長跑 process(DURATION=infinite)。需要更高負載時加 VUS，
+  # 不要靠 replicas 疊加(每個 replica 都會各自跑 setup 建轉帳目標池)。
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: k6-loadtest
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: k6-loadtest
+        app.kubernetes.io/component: loadtest
+    spec:
+      # Deployment 預設 restartPolicy: Always —— k6 process 若意外退出會自動重啟，
+      # 配合 DURATION=infinite 達成「一直有流量」。
+      containers:
+        - name: k6
+          image: ghcr.io/dommgifer/litebank/k6:latest
+          imagePullPolicy: Always
+          args: ["run", "/scripts/traffic.js"]
+          env:
+            # ---- 走 K8s service，不走外部 gateway api ----
+            # k6 與 api-gateway 同在 lite-bank namespace，直接用 service 短名。
+            - name: BASE_URL
+              value: "http://api-gateway:8080"
+            # ---- 預設 normal 情境 ----
+            - name: MODE
+              value: "normal"
+            # ---- 無限執行(持續流量)。改成 "20m" 之類即定時跑 ----
+            - name: DURATION
+              value: "infinite"
+            - name: VUS
+              value: "50"
+            # loadtest 用戶池(對應 db/migration/V10 loadtest_0001..0200)
+            - name: USER_POOL
+              value: "200"
+            - name: HOT_USER
+              value: "loadtest_0001"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
