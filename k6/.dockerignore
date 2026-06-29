@@ -1,0 +1,9 @@
+.DS_Store
+**/.DS_Store
+Dockerfile
+.dockerignore
+README.md
+run.sh
+run-k8s.sh
+deploy-k8s.sh
+k8s/

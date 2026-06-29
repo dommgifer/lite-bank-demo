@@ -2,6 +2,13 @@
 // k6 測試場景配置
 // ============================================
 
+// 無限流量：DURATION 設為 'infinite' / '0' / 'inf' 時，換成 10 年(≈永久)。
+// 搭配 K8s Deployment(restartPolicy Always)，process 若意外結束會自動重啟，
+// 達成「持續一直有流量」的效果。
+const rawDuration = (__ENV.DURATION || '5m').toLowerCase();
+const INFINITE = ['infinite', 'inf', '0'].includes(rawDuration);
+const DURATION = INFINITE ? '87600h' : (__ENV.DURATION || '5m');
+
 export const options = {
   // setup 會逐一登入 TARGET_POOL 個用戶建轉帳目標池(預設整池 200)，
   // 拉高 setupTimeout 避免大池子時 setup 超時。
@@ -10,7 +17,7 @@ export const options = {
     continuous_traffic: {
       executor: 'constant-vus',
       vus: parseInt(__ENV.VUS) || 10,
-      duration: __ENV.DURATION || '5m',
+      duration: DURATION,
     },
   },
   thresholds: {
