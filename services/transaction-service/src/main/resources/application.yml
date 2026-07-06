@@ -13,6 +13,16 @@ spring:
     username: ${DB_USER:litebank_user}
     password: ${DB_PASSWORD:litebank_pass}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # 止血：連線池預設 max=10，一有慢查詢就整池餓死；調大緩衝
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      # 拿不到連線時 5s 快速失敗，取代預設 30s 排隊堆積
+      connection-timeout: ${DB_POOL_CONN_TIMEOUT:5000}
+      # DB 層 statement timeout：單一 SQL 超過 3s 由 PostgreSQL 中止並釋放連線，
+      # 避免慢查詢（如全表 COUNT）長期佔死連線拖垮寫入交易
+      data-source-properties:
+        options: -c statement_timeout=3000
   jpa:
     hibernate:
       ddl-auto: validate
