@@ -6,7 +6,7 @@ import com.litebank.transactionservice.service.TransactionService;
 import io.opentelemetry.api.trace.Span;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -57,17 +57,16 @@ public class TransactionController {
                 .size(size)
                 .build();
 
-        Page<Transaction> transactionPage = transactionService.queryTransactions(params);
-        List<TransactionResponse> content = transactionPage.getContent().stream()
+        Slice<Transaction> transactionSlice = transactionService.queryTransactions(params);
+        List<TransactionResponse> content = transactionSlice.getContent().stream()
                 .map(TransactionResponse::fromEntity)
                 .collect(Collectors.toList());
 
         PageResponse<TransactionResponse> pageResponse = new PageResponse<>(
                 content,
-                transactionPage.getNumber(),
-                transactionPage.getSize(),
-                transactionPage.getTotalElements(),
-                transactionPage.getTotalPages()
+                transactionSlice.getNumber(),
+                transactionSlice.getSize(),
+                transactionSlice.hasNext()
         );
 
         String traceId = Span.current().getSpanContext().getTraceId();
@@ -219,5 +218,7 @@ public class TransactionController {
 
     record HealthStatus(String status, String timestamp, String service) {}
 
-    record PageResponse<T>(List<T> content, int page, int size, long totalElements, int totalPages) {}
+    // 改用 Slice：不再回傳 totalElements/totalPages（避免全表 COUNT）。
+    // 前端只消費 content；需要「還有下一頁」用 hasNext。
+    record PageResponse<T>(List<T> content, int page, int size, boolean hasNext) {}
 }

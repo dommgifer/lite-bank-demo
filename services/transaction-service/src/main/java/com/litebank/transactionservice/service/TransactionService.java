@@ -14,10 +14,9 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,7 +52,7 @@ public class TransactionService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Transaction> getTransactionsByAccount(Long accountId, int page, int size) {
+    public Slice<Transaction> getTransactionsByAccount(Long accountId, int page, int size) {
         Span span = tracer.spanBuilder("TransactionService.getTransactionsByAccount")
                 .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
@@ -70,7 +69,7 @@ public class TransactionService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Transaction> queryTransactions(TransactionQueryParams params) {
+    public Slice<Transaction> queryTransactions(TransactionQueryParams params) {
         Span span = tracer.spanBuilder("TransactionService.queryTransactions")
                 .setParent(io.opentelemetry.context.Context.current())
                 .startSpan();
@@ -100,8 +99,7 @@ public class TransactionService {
                 return transactionRepository.findByAccountIdOrderByCreatedAtDesc(params.getAccountId(), pageable);
             } else {
                 span.setAttribute("query.type", "all");
-                Pageable sortedPageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-                return transactionRepository.findAll(sortedPageable);
+                return transactionRepository.findByOrderByCreatedAtDesc(pageable);
             }
         } finally {
             span.end();
