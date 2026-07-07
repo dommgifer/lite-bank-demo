@@ -32,11 +32,19 @@ resilience4j:
         register-health-indicator: false
       transactionService:
         sliding-window-type: COUNT_BASED
-        sliding-window-size: 20
-        minimum-number-of-calls: 10
+        # Larger sample smooths transient timeout spikes before evaluating recovery.
+        sliding-window-size: 50
+        # Require more calls before calculating failure/slow rates.
+        minimum-number-of-calls: 20
         failure-rate-threshold: 50
-        wait-duration-in-open-state: 10s
-        permitted-number-of-calls-in-half-open-state: 5
+        # Back off longer between probes to reduce OPEN/HALF_OPEN oscillation frequency.
+        wait-duration-in-open-state: 30s
+        # More HALF_OPEN probes prevent one-off timeouts from immediately reopening the breaker.
+        permitted-number-of-calls-in-half-open-state: 10
+        # Transaction Service P99 is normally sub-second; 1.5s flags real slowness before the 2s read timeout.
+        slow-call-duration-threshold: 1500ms
+        # Only sustained slow behavior should trip the breaker.
+        slow-call-rate-threshold: 80
         automatic-transition-from-open-to-half-open-enabled: true
         register-health-indicator: false
 
