@@ -50,7 +50,7 @@ observability:
 
   loki:
     enabled: true
-    image: grafana/loki:2.9.0
+    image: grafana/loki:3.7.3
     storage: 2Gi
     external:
       endpoint: ""
@@ -80,6 +80,13 @@ observability:
     # rancher Prometheus 的 serviceMonitorSelector 為空 {}，不需此標籤即可被抓，
     # 保留此值讓歸屬更明確；設為空字串可略過。
     releaseLabel: "rancher-monitoring"
+
+  # PrometheusRule（停用中的替代方案）：把 SLO/infra 告警以 K8s CRD 形式交給 rancher Prometheus
+  # 評估。目前**告警由中央 Grafana 管**（grafana/alerting/push_to_grafana.py 推 slo-alerts.yaml，
+  # UI 可編輯），故此處 enabled=false 以免與 Grafana 重複告警。若日後改走 Prometheus/Alertmanager
+  # 路線，設 true 即可（規則由 gen_prometheusrule.py 從同一份 slo-alerts.yaml 生成）。
+  prometheusRule:
+    enabled: false
 
 # ===========================================
 # 敏感資料

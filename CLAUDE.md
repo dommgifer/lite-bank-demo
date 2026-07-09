@@ -49,8 +49,8 @@ cd services/dashboard && npm install && ./start-dev.sh
   - `exchange-rate-service` (8084): Currency rates (stateless)
 
 - **Coordination Layer Services (active):** Orchestrate workflows by calling data layer
-  - `transfer-service` (8083): Money transfer orchestration
-  - `deposit-withdrawal-service` (8086): Deposit/withdrawal orchestration
+  - `teller-service` (8083): Transfer / deposit / withdrawal orchestration
+    (⚠️ there is NO separate `transfer-service` or `deposit-withdrawal-service` — they were merged into teller-service)
   - `exchange-service` (8085): Currency exchange orchestration
 
 - **Analytics Services:** Event-driven analytics pipeline

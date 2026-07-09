@@ -1,0 +1,418 @@
+# 由 grafana/alerting/gen_prometheusrule.py 從 slo-alerts.yaml 自動生成，請勿手改。
+# 改規則 → 改 slo-alerts.yaml → 重跑該腳本。經 templates/prometheusrules.yaml 的
+# .Files.Get 併入 PrometheusRule（保留 {{ $labels.* }} 字面量不被 Helm 解析）。
+groups:
+- name: litebank-slo-burn-rate
+  interval: 1m
+  rules:
+  - alert: LitebankBrTransfersCrit
+    expr: '((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[1h])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER"}[1h]))) / 0.005 > 14.4)
+
+      and
+
+      ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER"}[5m]))) / 0.005 > 14.4)'
+    labels:
+      severity: critical
+      layer: business
+      slo: transfers
+      service: teller-service
+      http_route: /api/v1/transfers
+    annotations:
+      summary: 轉帳 error budget 高速燃燒：burn rate > 14.4x（1h & 5m 雙窗口）
+      description: 1 小時內將燒掉約 2% 月度 budget，預估 ~2 天耗盡。立即介入。
+  - alert: LitebankBrTransfersWarn
+    expr: '((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[6h])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER"}[6h]))) / 0.005 > 6)
+
+      and
+
+      ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[30m])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER"}[30m]))) / 0.005 > 6)'
+    labels:
+      severity: warning
+      layer: business
+      slo: transfers
+      service: teller-service
+      http_route: /api/v1/transfers
+    annotations:
+      summary: 轉帳 error budget 加速燃燒：burn rate > 6x（6h & 30m 雙窗口）
+      description: budget 消耗加速，當班確認根因。
+  - alert: LitebankBrDepositsCrit
+    expr: '((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[1h])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER"}[1h]))) / 0.005 > 14.4)
+
+      and
+
+      ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER"}[5m]))) / 0.005 > 14.4)'
+    labels:
+      severity: critical
+      layer: business
+      slo: deposits
+      service: teller-service
+      http_route: /api/v1/deposits
+    annotations:
+      summary: 存款 error budget 高速燃燒：burn rate > 14.4x（1h & 5m 雙窗口）
+      description: 1 小時內將燒掉約 2% 月度 budget，立即介入。
+  - alert: LitebankBrDepositsWarn
+    expr: '((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[6h])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER"}[6h]))) / 0.005 > 6)
+
+      and
+
+      ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[30m])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER"}[30m]))) / 0.005 > 6)'
+    labels:
+      severity: warning
+      layer: business
+      slo: deposits
+      service: teller-service
+      http_route: /api/v1/deposits
+    annotations:
+      summary: 存款 error budget 加速燃燒：burn rate > 6x（6h & 30m 雙窗口）
+      description: budget 消耗加速，當班確認根因。
+  - alert: LitebankBrWithdrawalsCrit
+    expr: '((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[1h])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER"}[1h]))) / 0.005 > 14.4)
+
+      and
+
+      ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER"}[5m]))) / 0.005 > 14.4)'
+    labels:
+      severity: critical
+      layer: business
+      slo: withdrawals
+      service: teller-service
+      http_route: /api/v1/withdrawals
+    annotations:
+      summary: 提款 error budget 高速燃燒：burn rate > 14.4x（1h & 5m 雙窗口）
+      description: 1 小時內將燒掉約 2% 月度 budget，立即介入。
+  - alert: LitebankBrWithdrawalsWarn
+    expr: '((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[6h])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER"}[6h]))) / 0.005 > 6)
+
+      and
+
+      ((1 - sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[30m])) / sum(rate(litebank_calls_total{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER"}[30m]))) / 0.005 > 6)'
+    labels:
+      severity: warning
+      layer: business
+      slo: withdrawals
+      service: teller-service
+      http_route: /api/v1/withdrawals
+    annotations:
+      summary: 提款 error budget 加速燃燒：burn rate > 6x（6h & 30m 雙窗口）
+      description: budget 消耗加速，當班確認根因。
+  - alert: LitebankBrExchangesCrit
+    expr: '((1 - sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[1h])) / sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER"}[1h]))) / 0.01 > 14.4)
+
+      and
+
+      ((1 - sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER"}[5m]))) / 0.01 > 14.4)'
+    labels:
+      severity: critical
+      layer: business
+      slo: exchanges
+      service: exchange-service
+      http_route: /api/v1/exchanges
+    annotations:
+      summary: 換匯 error budget 高速燃燒：burn rate > 14.4x（1h & 5m 雙窗口）
+      description: 1 小時內將燒掉約 2% 月度 budget，立即介入。
+  - alert: LitebankBrExchangesWarn
+    expr: '((1 - sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[6h])) / sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER"}[6h]))) / 0.01 > 6)
+
+      and
+
+      ((1 - sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[30m])) / sum(rate(litebank_calls_total{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER"}[30m]))) / 0.01 > 6)'
+    labels:
+      severity: warning
+      layer: business
+      slo: exchanges
+      service: exchange-service
+      http_route: /api/v1/exchanges
+    annotations:
+      summary: 換匯 error budget 加速燃燒：burn rate > 6x（6h & 30m 雙窗口）
+      description: budget 消耗加速，當班確認根因。
+  - alert: LitebankBrLoginCrit
+    expr: '((1 - sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[1h])) / sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER"}[1h]))) / 0.001 > 14.4)
+
+      and
+
+      ((1 - sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER"}[5m]))) / 0.001 > 14.4)'
+    labels:
+      severity: critical
+      layer: business
+      slo: login
+      service: user-service
+      http_route: /api/v1/auth/login
+    annotations:
+      summary: 登入 error budget 高速燃燒：burn rate > 14.4x（1h & 5m 雙窗口）
+      description: 用戶無法登入是最直接的影響，立即介入。
+  - alert: LitebankBrLoginWarn
+    expr: '((1 - sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[6h])) / sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER"}[6h]))) / 0.001 > 6)
+
+      and
+
+      ((1 - sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[30m])) / sum(rate(litebank_calls_total{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER"}[30m]))) / 0.001 > 6)'
+    labels:
+      severity: warning
+      layer: business
+      slo: login
+      service: user-service
+      http_route: /api/v1/auth/login
+    annotations:
+      summary: 登入 error budget 加速燃燒：burn rate > 6x（6h & 30m 雙窗口）
+      description: budget 消耗加速，當班確認根因。
+  - alert: LitebankBrBalanceCrit
+    expr: '((1 - sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[1h])) / sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER"}[1h]))) / 0.001 > 14.4)
+
+      and
+
+      ((1 - sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER"}[5m]))) / 0.001 > 14.4)'
+    labels:
+      severity: critical
+      layer: business
+      slo: balance
+      service: account-service
+      http_route: /api/v1/accounts/{accountId}/balance
+    annotations:
+      summary: 帳戶查詢 error budget 高速燃燒：burn rate > 14.4x（1h & 5m 雙窗口）
+      description: 餘額查詢是高頻核心讀取路徑，立即介入。
+  - alert: LitebankBrBalanceWarn
+    expr: '((1 - sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[6h])) / sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER"}[6h]))) / 0.001 > 6)
+
+      and
+
+      ((1 - sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER",status_code!="STATUS_CODE_ERROR"}[30m])) / sum(rate(litebank_calls_total{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER"}[30m]))) / 0.001 > 6)'
+    labels:
+      severity: warning
+      layer: business
+      slo: balance
+      service: account-service
+      http_route: /api/v1/accounts/{accountId}/balance
+    annotations:
+      summary: 帳戶查詢 error budget 加速燃燒：burn rate > 6x（6h & 30m 雙窗口）
+      description: budget 消耗加速，當班確認根因。
+- name: litebank-slo-latency
+  interval: 1m
+  rules:
+  - alert: LitebankLatTransfersWarn
+    expr: histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 3000
+    for: 5m
+    labels:
+      severity: warning
+      layer: business
+      slo: transfers
+      service: teller-service
+      http_route: /api/v1/transfers
+    annotations:
+      summary: 轉帳 P99 延遲超過 SLO（3000ms）持續 5 分鐘
+  - alert: LitebankLatTransfersCrit
+    expr: histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="teller-service",http_route="/api/v1/transfers",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 6000
+    for: 2m
+    labels:
+      severity: critical
+      layer: business
+      slo: transfers
+      service: teller-service
+      http_route: /api/v1/transfers
+    annotations:
+      summary: 轉帳 P99 延遲達 SLO 兩倍（6000ms）持續 2 分鐘
+  - alert: LitebankLatDepositsWarn
+    expr: histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 2000
+    for: 5m
+    labels:
+      severity: warning
+      layer: business
+      slo: deposits
+      service: teller-service
+      http_route: /api/v1/deposits
+    annotations:
+      summary: 存款 P99 延遲超過 SLO（2000ms）持續 5 分鐘
+  - alert: LitebankLatDepositsCrit
+    expr: histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="teller-service",http_route="/api/v1/deposits",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 4000
+    for: 2m
+    labels:
+      severity: critical
+      layer: business
+      slo: deposits
+      service: teller-service
+      http_route: /api/v1/deposits
+    annotations:
+      summary: 存款 P99 延遲達 SLO 兩倍（4000ms）持續 2 分鐘
+  - alert: LitebankLatWithdrawalsWarn
+    expr: histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 2000
+    for: 5m
+    labels:
+      severity: warning
+      layer: business
+      slo: withdrawals
+      service: teller-service
+      http_route: /api/v1/withdrawals
+    annotations:
+      summary: 提款 P99 延遲超過 SLO（2000ms）持續 5 分鐘
+  - alert: LitebankLatWithdrawalsCrit
+    expr: histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="teller-service",http_route="/api/v1/withdrawals",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 4000
+    for: 2m
+    labels:
+      severity: critical
+      layer: business
+      slo: withdrawals
+      service: teller-service
+      http_route: /api/v1/withdrawals
+    annotations:
+      summary: 提款 P99 延遲達 SLO 兩倍（4000ms）持續 2 分鐘
+  - alert: LitebankLatExchangesWarn
+    expr: histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 5000
+    for: 5m
+    labels:
+      severity: warning
+      layer: business
+      slo: exchanges
+      service: exchange-service
+      http_route: /api/v1/exchanges
+    annotations:
+      summary: 換匯 P99 延遲超過 SLO（5000ms）持續 5 分鐘
+  - alert: LitebankLatExchangesCrit
+    expr: histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="exchange-service",http_route="/api/v1/exchanges",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 10000
+    for: 2m
+    labels:
+      severity: critical
+      layer: business
+      slo: exchanges
+      service: exchange-service
+      http_route: /api/v1/exchanges
+    annotations:
+      summary: 換匯 P99 延遲達 SLO 兩倍（10000ms）持續 2 分鐘
+  - alert: LitebankLatLoginWarn
+    expr: histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 1000
+    for: 5m
+    labels:
+      severity: warning
+      layer: business
+      slo: login
+      service: user-service
+      http_route: /api/v1/auth/login
+    annotations:
+      summary: 登入 P99 延遲超過 SLO（1000ms）持續 5 分鐘
+  - alert: LitebankLatLoginCrit
+    expr: histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="user-service",http_route="/api/v1/auth/login",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 2000
+    for: 2m
+    labels:
+      severity: critical
+      layer: business
+      slo: login
+      service: user-service
+      http_route: /api/v1/auth/login
+    annotations:
+      summary: 登入 P99 延遲達 SLO 兩倍（2000ms）持續 2 分鐘
+  - alert: LitebankLatBalanceWarn
+    expr: histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 500
+    for: 5m
+    labels:
+      severity: warning
+      layer: business
+      slo: balance
+      service: account-service
+      http_route: /api/v1/accounts/{accountId}/balance
+    annotations:
+      summary: 帳戶查詢 P99 延遲超過 SLO（500ms）持續 5 分鐘
+  - alert: LitebankLatBalanceCrit
+    expr: histogram_quantile(0.99, sum(rate(litebank_duration_milliseconds_bucket{service_name="account-service",http_route="/api/v1/accounts/{accountId}/balance",span_kind="SPAN_KIND_SERVER"}[5m])) by (le)) > 1000
+    for: 2m
+    labels:
+      severity: critical
+      layer: business
+      slo: balance
+      service: account-service
+      http_route: /api/v1/accounts/{accountId}/balance
+    annotations:
+      summary: 帳戶查詢 P99 延遲達 SLO 兩倍（1000ms）持續 2 分鐘
+- name: litebank-infra
+  interval: 1m
+  rules:
+  - alert: LitebankInfTransactionErrWarn
+    expr: sum(rate(litebank_calls_total{service_name="transaction-service",span_kind="SPAN_KIND_SERVER",status_code="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="transaction-service",span_kind="SPAN_KIND_SERVER"}[5m])) > 0.01
+    for: 2m
+    labels:
+      severity: warning
+      layer: infra
+      service: transaction-service
+    annotations:
+      summary: transaction-service 錯誤率超過 1% 持續 2 分鐘（餘額寫入路徑）
+  - alert: LitebankInfTransactionErrCrit
+    expr: sum(rate(litebank_calls_total{service_name="transaction-service",span_kind="SPAN_KIND_SERVER",status_code="STATUS_CODE_ERROR"}[5m])) / sum(rate(litebank_calls_total{service_name="transaction-service",span_kind="SPAN_KIND_SERVER"}[5m])) > 0.05
+    for: 2m
+    labels:
+      severity: critical
+      layer: infra
+      service: transaction-service
+    annotations:
+      summary: transaction-service 錯誤率超過 5% 持續 2 分鐘，餘額寫入受阻
+  - alert: LitebankInfHikariWarn
+    expr: hikaricp_connections_pending > 2
+    for: 3m
+    labels:
+      severity: warning
+      layer: infra
+    annotations:
+      summary: '{{ $labels.application }} DB 連線池開始排隊（pending > 2）持續 3 分鐘'
+  - alert: LitebankInfHikariCrit
+    expr: hikaricp_connections_pending > 10
+    for: 1m
+    labels:
+      severity: critical
+      layer: infra
+    annotations:
+      summary: '{{ $labels.application }} DB 連線池接近耗盡（pending > 10）持續 1 分鐘'
+  - alert: LitebankInfHeapWarn
+    expr: sum by (application) (jvm_memory_used_bytes{area="heap"}) / sum by (application) (jvm_memory_max_bytes{area="heap"}) * 100 > 85
+    for: 5m
+    labels:
+      severity: warning
+      layer: infra
+    annotations:
+      summary: '{{ $labels.application }} JVM Heap 使用率超過 85% 持續 5 分鐘'
+  - alert: LitebankInfHeapCrit
+    expr: sum by (application) (jvm_memory_used_bytes{area="heap"}) / sum by (application) (jvm_memory_max_bytes{area="heap"}) * 100 > 95
+    for: 2m
+    labels:
+      severity: critical
+      layer: infra
+    annotations:
+      summary: '{{ $labels.application }} JVM Heap 使用率超過 95% 持續 2 分鐘，瀕臨 OOM'
+  - alert: LitebankInfTomcatWarn
+    expr: tomcat_threads_busy_threads / tomcat_threads_config_max_threads > 0.8
+    for: 3m
+    labels:
+      severity: warning
+      layer: infra
+    annotations:
+      summary: '{{ $labels.application }} Tomcat 執行緒使用率超過 80% 持續 3 分鐘'
+  - alert: LitebankInfTomcatCrit
+    expr: tomcat_threads_busy_threads / tomcat_threads_config_max_threads > 0.9
+    for: 1m
+    labels:
+      severity: critical
+      layer: infra
+    annotations:
+      summary: '{{ $labels.application }} Tomcat 執行緒使用率超過 90% 持續 1 分鐘，瀕臨拒絕請求'
+  - alert: LitebankInfAbsentApiGateway
+    expr: absent(litebank_calls_total{service_name="api-gateway",span_kind="SPAN_KIND_SERVER"})
+    for: 5m
+    labels:
+      severity: critical
+      layer: infra
+      service: api-gateway
+    annotations:
+      summary: api-gateway spanmetrics 連續 5 分鐘無資料，疑似服務不可達
+  - alert: LitebankInfAbsentTeller
+    expr: absent(litebank_calls_total{service_name="teller-service",span_kind="SPAN_KIND_SERVER"})
+    for: 5m
+    labels:
+      severity: critical
+      layer: infra
+      service: teller-service
+    annotations:
+      summary: teller-service spanmetrics 連續 5 分鐘無資料，疑似服務不可達
+  - alert: LitebankInfAbsentTransaction
+    expr: absent(litebank_calls_total{service_name="transaction-service",span_kind="SPAN_KIND_SERVER"})
+    for: 5m
+    labels:
+      severity: critical
+      layer: infra
+      service: transaction-service
+    annotations:
+      summary: transaction-service spanmetrics 連續 5 分鐘無資料，餘額寫入完全中斷

@@ -12,6 +12,8 @@ data:
     server:
       http_listen_port: 3100
       grpc_listen_port: 9096
+      grpc_server_max_recv_msg_size: 16777216
+      grpc_server_max_send_msg_size: 16777216
 
     common:
       instance_addr: 127.0.0.1
@@ -24,6 +26,14 @@ data:
       ring:
         kvstore:
           store: inmemory
+
+    pattern_ingester:
+      enabled: true
+      lifecycler:
+        ring:
+          kvstore:
+            store: inmemory
+          replication_factor: 1
 
     query_range:
       results_cache:
@@ -106,7 +116,7 @@ spec:
               memory: "256Mi"
               cpu: "100m"
             limits:
-              memory: "512Mi"
+              memory: "1Gi"
               cpu: "300m"
       volumes:
         - name: config

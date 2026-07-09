@@ -146,7 +146,7 @@ tomcat_threads_busy_threads / tomcat_threads_config_max_threads > 0.8
 
 ### INF-005：服務沉默（spanmetrics 完全消失）
 
-用 `absent()` 偵測服務流量歸零；此規則 `noDataState: Alerting`（與 budget 類規則的 `OK` 相反），確保服務完全沉默時仍會告警。
+用 `absent()` 偵測服務流量歸零。**此規則必須用 `noDataState: OK`**：absent() 在「服務正常（series 存在）」時回空向量 → NoData，若誤設 `Alerting` 會在服務**健康**時持續誤報。沉默偵測是靠 series 消失時 absent() 回 `1` 過 threshold 觸發，與 NoData 無關。
 
 ```promql
 absent(litebank_calls_total{service_name="api-gateway",span_kind="SPAN_KIND_SERVER"})
@@ -181,6 +181,6 @@ AI SRE Agent 收到 Webhook 後：
 
 - **Symptom 與 cause 都告警，嚴重度不同**：`burn rate`（轉帳失敗）是 symptom，`INF-002`（連線池耗盡）是 cause。
 - **多窗口雙重確認**：burn rate 用 short + long window AND，避免瞬間噪音。
-- **noData 語意明確**：budget／延遲／資源類規則 noData = OK（健康），服務沉默另由 INF-005 `absent()` 以 noData = Alerting 把關。
+- **noData 語意明確**：所有規則 noData = OK（健康）。服務沉默由 INF-005 `absent()` 回 `1` 過 threshold 觸發，**不可**用 noData = Alerting，否則服務正常時 absent() 回空 → NoData 反而誤報。
 - **告警必須 actionable**：每條告警都對應到 Runbook 或 AI SRE 的調查邏輯。
 ```

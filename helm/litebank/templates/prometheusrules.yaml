@@ -1,0 +1,19 @@
+{{- if .Values.observability.prometheusRule.enabled }}
+{{- if .Capabilities.APIVersions.Has "monitoring.coreos.com/v1" }}
+# SLO/infra 告警搬上 K8s：rancher Prometheus 空 ruleSelector 會自動撿此 PrometheusRule。
+# spec.groups 內容在 files/slo-prometheusrule.spec.yaml，由 gen_prometheusrule.py 從
+# slo-alerts.yaml 生成；用 .Files.Get 讀取以保留 Alertmanager 的 $labels 模板字面量不被 Helm 解析。
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "litebank.fullname" . }}-slo-alerts
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "litebank.labels" . | nindent 4 }}
+    {{- with .Values.observability.serviceMonitor.releaseLabel }}
+    release: {{ . }}
+    {{- end }}
+spec:
+{{ .Files.Get "files/slo-prometheusrule.spec.yaml" | indent 2 }}
+{{- end }}
+{{- end }}
