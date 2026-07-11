@@ -77,5 +77,5 @@ jwt:
 notification:
   cleanup:
     cron: "0 0 3 * * ?"           # 每天凌晨 3 點執行
-    read-retention-days: 30       # 已讀通知保留 30 天
-    unread-retention-days: 90     # 未讀通知保留 90 天
+    read-retention-days: ${NOTIFICATION_CLEANUP_READ_RETENTION_DAYS:7}       # 已讀通知保留天數
+    unread-retention-days: ${NOTIFICATION_CLEANUP_UNREAD_RETENTION_DAYS:7}   # 未讀通知保留天數（壓測通知不會被讀，過長會塞爆磁碟）

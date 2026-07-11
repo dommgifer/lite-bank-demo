@@ -69,6 +69,11 @@ spec:
               value: "3"
             - name: KAFKA_LOG_DIRS
               value: "/var/kafka-data"
+            # 2026-07-10: 加 retention 防磁碟寫爆（原本無 size retention，只靠預設 7 天時間 retention）
+            - name: KAFKA_LOG_RETENTION_HOURS
+              value: "24"
+            - name: KAFKA_LOG_RETENTION_BYTES
+              value: "536870912"
             - name: CLUSTER_ID
               value: {{ .Values.infrastructure.kafka.clusterId | quote }}
           volumeMounts:

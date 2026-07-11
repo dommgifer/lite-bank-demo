@@ -10,6 +10,16 @@ global:
   imagePullSecrets: []
 
 # ===========================================
+# 維運排程
+# ===========================================
+maintenance:
+  # transactions 流水帳保留清理（2026-07-11 事故：508 萬列/2.4GB 寫爆 PVC）
+  txnCleanup:
+    enabled: true
+    schedule: "0 4 * * *"    # 每天 04:00（避開 notification cleanup 的 03:00）
+    retentionDays: 30
+
+# ===========================================
 # 基礎設施
 # ===========================================
 infrastructure:
@@ -18,7 +28,9 @@ infrastructure:
     image: postgres:16-alpine
     database: litebank
     user: litebank_user
-    storage: 1Gi
+    # 2026-07-11: 1Gi→10Gi（transactions/notifications 膨脹寫爆 pg_wal crashloop）
+    # 既有叢集 STS volumeClaimTemplates 不可變，升級時需 override 回原值（PVC 已線上擴容）
+    storage: 10Gi
     external:
       host: ""
       port: 5432
@@ -27,7 +39,8 @@ infrastructure:
     enabled: true
     image: confluentinc/cp-kafka:7.5.0
     clusterId: "MkU3OEVBNTcwNTJENDM2Qk"
-    storage: 1Gi
+    # 2026-07-10: 1Gi→10Gi（線上曾擴到 5Gi 仍寫爆 crashloop），搭配 template 的 retention 防復發
+    storage: 10Gi
     external:
       bootstrapServers: ""
 
@@ -158,6 +171,9 @@ services:
     image: notification-service:latest
     port: 8089
     replicas: 1
+    cleanup:
+      readRetentionDays: 7      # 已讀通知保留天數
+      unreadRetentionDays: 7    # 未讀通知保留天數（壓測通知不會被讀，過長會塞爆磁碟）
 
   # Gateway
   apiGateway:

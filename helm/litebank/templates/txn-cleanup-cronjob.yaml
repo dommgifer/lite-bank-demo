@@ -1,0 +1,57 @@
+# Transactions ledger retention cleanup
+# 背景：2026-07-11 transactions 膨脹到 508 萬列/2.4GB 寫爆 postgres PVC。
+# 餘額真相來源是 accounts.balance，transactions 只是歷史流水帳，
+# analytics 走 Kafka 事件進 summary 表，因此舊列可安全刪除。
+{{- if and .Values.infrastructure.postgres.enabled .Values.maintenance.txnCleanup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: txn-cleanup
+  labels:
+    {{- include "litebank.labels" . | nindent 4 }}
+    app.kubernetes.io/name: txn-cleanup
+spec:
+  schedule: {{ .Values.maintenance.txnCleanup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: txn-cleanup
+            app.kubernetes.io/instance: {{ .Release.Name }}
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: txn-cleanup
+              image: {{ .Values.infrastructure.postgres.image }}
+              env:
+                - name: PGHOST
+                  value: {{ include "litebank.postgresHost" . }}
+                - name: PGPORT
+                  value: {{ include "litebank.postgresPort" . | quote }}
+                - name: PGDATABASE
+                  value: {{ .Values.infrastructure.postgres.database }}
+                - name: PGUSER
+                  value: {{ .Values.infrastructure.postgres.user }}
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: litebank-secrets
+                      key: db-password
+                - name: RETENTION_DAYS
+                  value: {{ .Values.maintenance.txnCleanup.retentionDays | quote }}
+              command:
+                - sh
+                - -c
+                - |
+                  set -e
+                  echo "Deleting transactions older than ${RETENTION_DAYS} days..."
+                  psql -v ON_ERROR_STOP=1 -c "DELETE FROM transactions WHERE created_at < now() - interval '${RETENTION_DAYS} days';"
+                  psql -v ON_ERROR_STOP=1 -c "VACUUM ANALYZE transactions;"
+                  psql -t -c "SELECT 'remaining rows: ' || count(*) || ', size: ' || pg_size_pretty(pg_total_relation_size('transactions')) FROM transactions;"
+{{- end }}

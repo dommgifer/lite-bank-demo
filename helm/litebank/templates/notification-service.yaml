@@ -3,6 +3,8 @@
   (dict "name" "SPRING_DATASOURCE_URL" "value" (printf "jdbc:postgresql://%s:%s/%s" (include "litebank.postgresHost" .) (include "litebank.postgresPort" .) .Values.infrastructure.postgres.database))
   (dict "name" "SPRING_DATASOURCE_USERNAME" "value" .Values.infrastructure.postgres.user)
   (dict "name" "SPRING_DATASOURCE_PASSWORD" "valueFrom" (dict "secretKeyRef" (dict "name" "litebank-secrets" "key" "db-password")))
+  (dict "name" "NOTIFICATION_CLEANUP_READ_RETENTION_DAYS" "value" (.Values.services.notificationService.cleanup.readRetentionDays | toString))
+  (dict "name" "NOTIFICATION_CLEANUP_UNREAD_RETENTION_DAYS" "value" (.Values.services.notificationService.cleanup.unreadRetentionDays | toString))
 }}
 {{- $ctx := dict "name" "notification-service" "config" .Values.services.notificationService "root" . "needsDb" true "needsKafka" true "needsJwt" false "extraEnv" $extraEnv }}
 {{ include "litebank.deployment" $ctx }}
